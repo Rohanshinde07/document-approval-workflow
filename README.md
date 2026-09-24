@@ -57,6 +57,7 @@ All demo users share the password: **`password123`**
 
 | User Name | Email | Project Role (Apollo) | Project Role (Nova) |
 |---|---|---|---|
+| **System Administrator** | `admin@demo.com` | `SYSTEM_ADMIN` (Global Console) | `SYSTEM_ADMIN` |
 | **Alice Smith** | `alice@demo.com` | `OWNER` | — |
 | **Bob Jones** | `bob@demo.com` | `AUTHOR` | `REVIEWER` |
 | **Carol Danvers** | `carol@demo.com` | `REVIEWER` | `APPROVER` |
@@ -65,7 +66,9 @@ All demo users share the password: **`password123`**
 | **Frank Castle** | `frank@demo.com` | `VIEWER` | — |
 | **Grace Hopper** | `grace@demo.com` | — | `OWNER` |
 
-> *Note: On the login page, click any of the "Demo User Account" cards to instantly auto-fill credentials and sign in.*
+> 💡 **Quick Testing Tips:**
+> - **On Login Page:** Click any of the **`⚡ Quick Fill Demo Account`** buttons (Alice, Bob, Carol, Erin, Admin) to instantly auto-fill credentials and sign in.
+> - **In App:** Once signed in as an Owner or Admin, use the **`Test Personas`** switcher on the sidebar to test Author ➔ Reviewer ➔ Approver ➔ Owner handoffs in under 30 seconds without manual re-login.
 
 ---
 

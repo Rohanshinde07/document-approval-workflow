@@ -172,6 +172,56 @@ export const LoginPage: React.FC = () => {
             </div>
           </div>
 
+          {!isRegister && (
+            <div style={{ marginTop: '-0.25rem', marginBottom: '1.25rem' }}>
+              <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.35rem' }}>
+                ⚡ Quick Fill Demo Account:
+              </div>
+              <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+                {[
+                  { label: '👑 Alice (Owner)', email: 'alice@demo.com' },
+                  { label: '✍️ Bob (Author)', email: 'bob@demo.com' },
+                  { label: '🔍 Carol (Reviewer)', email: 'carol@demo.com' },
+                  { label: '🛡️ Erin (Approver)', email: 'erin@demo.com' },
+                  { label: '⚙️ Admin', email: 'admin@demo.com' },
+                ].map((demoUser) => (
+                  <button
+                    key={demoUser.email}
+                    type="button"
+                    onClick={() => {
+                      setEmail(demoUser.email);
+                      setPassword('password123');
+                      setError('');
+                    }}
+                    style={{
+                      background: '#f8fafc',
+                      border: '1px solid #e2e8f0',
+                      borderRadius: '6px',
+                      padding: '3px 8px',
+                      fontSize: '0.72rem',
+                      color: '#475569',
+                      cursor: 'pointer',
+                      fontWeight: 600,
+                      transition: 'all 0.15s ease',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = '#e0e7ff';
+                      e.currentTarget.style.borderColor = '#818cf8';
+                      e.currentTarget.style.color = '#3730a3';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = '#f8fafc';
+                      e.currentTarget.style.borderColor = '#e2e8f0';
+                      e.currentTarget.style.color = '#475569';
+                    }}
+                  >
+                    {demoUser.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           {isRegister && (
             <div className="form-group">
               <label className="form-label">Confirm Password</label>
