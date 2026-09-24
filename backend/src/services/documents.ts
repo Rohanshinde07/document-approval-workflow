@@ -17,6 +17,12 @@ import {
   DecisionType,
 } from '../domain/workflow.js';
 import { getProjectMembership } from './projects.js';
+import {
+  sendReviewerAssignedEmail,
+  sendChangesRequestedEmail,
+  sendStageAdvancedToApproversEmail,
+  sendFinalDecisionEmail,
+} from './email.js';
 
 export async function listDocuments(
   projectId: string,
@@ -481,6 +487,36 @@ export async function submitDocument(documentId: string, userId: string) {
       },
     });
 
+    // Asynchronously dispatch reviewer notifications
+    (async () => {
+      try {
+        const reviewers = await prisma.user.findMany({
+          where: { id: { in: eligibleReviewers } },
+          select: { email: true, name: true },
+        });
+        const author = await prisma.user.findUnique({
+          where: { id: userId },
+          select: { name: true },
+        });
+        const proj = await prisma.project.findUnique({
+          where: { id: document.projectId },
+          select: { name: true },
+        });
+        for (const rev of reviewers) {
+          sendReviewerAssignedEmail({
+            toEmail: rev.email,
+            reviewerName: rev.name,
+            authorName: author?.name || 'Author',
+            docTitle: document.title,
+            docId: document.id,
+            projectName: proj?.name || 'Project',
+          }).catch(console.error);
+        }
+      } catch (err) {
+        console.error('[Notification Dispatch Error]', err);
+      }
+    })();
+
     return updatedDoc;
   });
 }
@@ -659,6 +695,80 @@ export async function recordDecision(
         metadata: { trigger: 'ALL_APPROVERS_APPROVED' },
       });
     }
+
+    // Asynchronously dispatch workflow notifications based on decision outcome
+    (async () => {
+      try {
+        const author = await prisma.user.findUnique({
+          where: { id: document.authorId },
+          select: { email: true, name: true },
+        });
+        const actor = await prisma.user.findUnique({
+          where: { id: userId },
+          select: { name: true },
+        });
+        const proj = await prisma.project.findUnique({
+          where: { id: document.projectId },
+          select: { name: true },
+        });
+        const docTitle = document.title;
+        const projectName = proj?.name || 'Project';
+
+        if (data.decision === 'REQUEST_CHANGES' && author) {
+          sendChangesRequestedEmail({
+            toEmail: author.email,
+            authorName: author.name,
+            reviewerName: actor?.name || 'Reviewer',
+            docTitle,
+            docId: documentId,
+            projectName,
+            commentText: data.comment || undefined,
+          }).catch(console.error);
+        } else if (decisionResult.stageAdvanced) {
+          // Notify approvers that document has passed review and needs final approval
+          const approvers = await prisma.reviewAssignment.findMany({
+            where: {
+              versionId: document.currentVersionId!,
+              stage: 'APPROVAL',
+            },
+            include: { user: { select: { email: true, name: true } } },
+          });
+          for (const app of approvers) {
+            sendStageAdvancedToApproversEmail({
+              toEmail: app.user.email,
+              approverName: app.user.name,
+              docTitle,
+              docId: documentId,
+              projectName,
+            }).catch(console.error);
+          }
+        } else if (decisionResult.documentApproved && author) {
+          sendFinalDecisionEmail({
+            toEmail: author.email,
+            authorName: author.name,
+            approverName: actor?.name || 'Approver',
+            docTitle,
+            docId: documentId,
+            projectName,
+            decision: 'APPROVED',
+            notes: data.comment || undefined,
+          }).catch(console.error);
+        } else if (decisionResult.nextDocumentStatus === 'REJECTED' && author) {
+          sendFinalDecisionEmail({
+            toEmail: author.email,
+            authorName: author.name,
+            approverName: actor?.name || 'Approver',
+            docTitle,
+            docId: documentId,
+            projectName,
+            decision: 'REJECTED',
+            notes: data.comment || undefined,
+          }).catch(console.error);
+        }
+      } catch (err) {
+        console.error('[Notification Dispatch Error]', err);
+      }
+    })();
 
     return updatedDocument;
   });
