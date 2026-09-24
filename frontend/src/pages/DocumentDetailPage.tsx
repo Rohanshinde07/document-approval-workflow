@@ -106,8 +106,8 @@ export const DocumentDetailPage: React.FC = () => {
     e.preventDefault();
     setActionError('');
 
-    if (decisionType === 'REQUEST_CHANGES' && !decisionComment.trim()) {
-      setActionError('Feedback comment is required when requesting changes.');
+    if ((decisionType === 'REQUEST_CHANGES' || decisionType === 'REJECT') && !decisionComment.trim()) {
+      setActionError(`A comment / reason is required when ${decisionType === 'REJECT' ? 'rejecting' : 'requesting changes on'} a document.`);
       return;
     }
 
@@ -932,6 +932,26 @@ export const DocumentDetailPage: React.FC = () => {
             </div>
 
             <form onSubmit={handleRecordDecision}>
+              {actionError && (
+                <div
+                  style={{
+                    background: '#fef2f2',
+                    border: '1px solid #fecaca',
+                    color: '#b91c1c',
+                    padding: '0.75rem 1rem',
+                    borderRadius: '8px',
+                    marginBottom: '1.25rem',
+                    fontSize: '0.875rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                  }}
+                >
+                  <span style={{ fontSize: '1.1rem' }}>⚠️</span>
+                  <span style={{ fontWeight: 600 }}>{actionError}</span>
+                </div>
+              )}
+
               <div className="form-group">
                 <label className="form-label">Select Your Decision</label>
                 <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
@@ -941,7 +961,10 @@ export const DocumentDetailPage: React.FC = () => {
                       name="decision"
                       value="APPROVE"
                       checked={decisionType === 'APPROVE'}
-                      onChange={() => setDecisionType('APPROVE')}
+                      onChange={() => {
+                        setDecisionType('APPROVE');
+                        if (actionError) setActionError('');
+                      }}
                     />
                     <span style={{ color: '#16a34a', fontWeight: 700 }}>
                       {document.status === 'IN_APPROVAL' ? 'Grant Final Approval' : 'Approve Review'}
@@ -954,7 +977,10 @@ export const DocumentDetailPage: React.FC = () => {
                       name="decision"
                       value="REQUEST_CHANGES"
                       checked={decisionType === 'REQUEST_CHANGES'}
-                      onChange={() => setDecisionType('REQUEST_CHANGES')}
+                      onChange={() => {
+                        setDecisionType('REQUEST_CHANGES');
+                        if (actionError) setActionError('');
+                      }}
                     />
                     <span style={{ color: '#d97706', fontWeight: 700 }}>Request Changes</span>
                   </label>
@@ -966,7 +992,10 @@ export const DocumentDetailPage: React.FC = () => {
                         name="decision"
                         value="REJECT"
                         checked={decisionType === 'REJECT'}
-                        onChange={() => setDecisionType('REJECT')}
+                        onChange={() => {
+                          setDecisionType('REJECT');
+                          if (actionError) setActionError('');
+                        }}
                       />
                       <span style={{ color: '#dc2626', fontWeight: 700 }}>Reject Document</span>
                     </label>
@@ -975,25 +1004,69 @@ export const DocumentDetailPage: React.FC = () => {
               </div>
 
               <div className="form-group">
-                <label className="form-label">
-                  Feedback / Justification Notes{' '}
-                  {decisionType === 'REQUEST_CHANGES' ? (
-                    <strong style={{ color: '#dc2626' }}>(Mandatory for requesting changes)</strong>
-                  ) : (
-                    <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>(Optional)</span>
-                  )}
-                </label>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+                  <label className="form-label" style={{ marginBottom: 0 }}>
+                    Feedback / Justification Notes{' '}
+                    {decisionType === 'REQUEST_CHANGES' ? (
+                      <strong style={{ color: '#dc2626' }}>(Mandatory: Revisions required)</strong>
+                    ) : decisionType === 'REJECT' ? (
+                      <strong style={{ color: '#dc2626' }}>(Mandatory: Rejection reason required)</strong>
+                    ) : (
+                      <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>(Optional)</span>
+                    )}
+                  </label>
+                </div>
+
+                {decisionType === 'REJECT' && (
+                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '0.6rem' }}>
+                    <span style={{ fontSize: '0.75rem', color: '#64748b', alignSelf: 'center' }}>Quick reason:</span>
+                    {[
+                      'Strategic direction changed',
+                      'Budget constraints',
+                      'Technical architecture mismatch',
+                      'Initiative cancelled',
+                    ].map((reason) => (
+                      <button
+                        key={reason}
+                        type="button"
+                        onClick={() => {
+                          setDecisionComment(reason);
+                          if (actionError) setActionError('');
+                        }}
+                        style={{
+                          background: '#fef2f2',
+                          border: '1px solid #fecaca',
+                          color: '#b91c1c',
+                          borderRadius: '12px',
+                          padding: '2px 8px',
+                          fontSize: '0.75rem',
+                          cursor: 'pointer',
+                          fontWeight: 500,
+                        }}
+                      >
+                        + {reason}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
                 <textarea
                   className="form-textarea"
                   value={decisionComment}
-                  onChange={(e) => setDecisionComment(e.target.value)}
+                  onChange={(e) => {
+                    setDecisionComment(e.target.value);
+                    if (actionError) setActionError('');
+                  }}
                   placeholder={
                     decisionType === 'REQUEST_CHANGES'
                       ? 'Specify exactly what needs to be changed before you can approve...'
+                      : decisionType === 'REJECT'
+                      ? 'Please specify why this document is being rejected (e.g. Budget constraints, initiative cancelled)...'
                       : 'Add any optional sign-off remarks or guidance...'
                   }
                   rows={4}
-                  required={decisionType === 'REQUEST_CHANGES'}
+                  required={decisionType === 'REQUEST_CHANGES' || decisionType === 'REJECT'}
+                  autoFocus={decisionType === 'REQUEST_CHANGES' || decisionType === 'REJECT'}
                 />
               </div>
 
