@@ -5,6 +5,7 @@ import { apiRequest } from '../api/client.js';
 import { StatusBadge } from '../components/StatusBadge.js';
 import { DOCUMENT_TEMPLATES, DocumentTemplate } from '../data/templates.js';
 import { FileImportDropzone } from '../components/FileImportDropzone.js';
+import { SLATimerBadge } from '../components/SLATimerBadge.js';
 import { useAuth } from '../context/AuthContext.js';
 
 interface ProjectDetail {
@@ -398,7 +399,17 @@ export const ProjectDetailPage: React.FC = () => {
                       </td>
                       <td>{doc.task?.title || '—'}</td>
                       <td>
-                        <StatusBadge status={doc.status} />
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', alignItems: 'flex-start' }}>
+                          <StatusBadge status={doc.status} />
+                          {(doc.status === 'IN_REVIEW' || doc.status === 'IN_APPROVAL') && (
+                            <SLATimerBadge
+                              documentId={doc.id}
+                              status={doc.status}
+                              startTime={doc.updatedAt}
+                              canNudge={doc.authorId === user?.id || project.myRole === 'OWNER'}
+                            />
+                          )}
+                        </div>
                       </td>
                       <td>{doc.author.name}</td>
                       <td>v{doc.currentVersion?.versionNumber || 1}</td>

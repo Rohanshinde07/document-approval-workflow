@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { UserQueue } from '../types.js';
 import { apiRequest } from '../api/client.js';
 import { StatusBadge } from '../components/StatusBadge.js';
+import { SLATimerBadge } from '../components/SLATimerBadge.js';
 import { useAuth } from '../context/AuthContext.js';
 
 export const QueuePage: React.FC = () => {
@@ -263,7 +264,16 @@ export const QueuePage: React.FC = () => {
                         <span className="role-badge">{item.stage}</span>
                       </td>
                       <td>
-                        <StatusBadge status={item.document.status} />
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', alignItems: 'flex-start' }}>
+                          <StatusBadge status={item.document.status} />
+                          {(item.document.status === 'IN_REVIEW' || item.document.status === 'IN_APPROVAL') && (
+                            <SLATimerBadge
+                              documentId={item.document.id}
+                              status={item.document.status}
+                              startTime={item.document.updatedAt}
+                            />
+                          )}
+                        </div>
                       </td>
                       <td>{item.document.author?.name}</td>
                       <td>
@@ -348,7 +358,17 @@ export const QueuePage: React.FC = () => {
                           <strong>v{doc.currentVersion?.versionNumber || 1}</strong>
                         </td>
                         <td>
-                          <StatusBadge status={doc.status} />
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', alignItems: 'flex-start' }}>
+                            <StatusBadge status={doc.status} />
+                            {(doc.status === 'IN_REVIEW' || doc.status === 'IN_APPROVAL') && (
+                              <SLATimerBadge
+                                documentId={doc.id}
+                                status={doc.status}
+                                startTime={doc.updatedAt}
+                                canNudge={doc.authorId === user?.id}
+                              />
+                            )}
+                          </div>
                         </td>
                         <td style={{ fontSize: '0.85rem', color: stageColor, fontWeight: 600 }}>
                           {stageInfo}

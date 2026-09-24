@@ -6,6 +6,9 @@ import { StatusBadge } from '../components/StatusBadge.js';
 import { useAuth } from '../context/AuthContext.js';
 import { AIAuditModal } from '../components/AIAuditModal.js';
 import { FileImportDropzone } from '../components/FileImportDropzone.js';
+import { VersionDiffViewer } from '../components/VersionDiffViewer.js';
+import { AuditCertificateModal } from '../components/AuditCertificateModal.js';
+import { SLATimerBadge } from '../components/SLATimerBadge.js';
 
 export const DocumentDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -15,12 +18,13 @@ export const DocumentDetailPage: React.FC = () => {
   const [document, setDocument] = useState<DocumentDetail | null>(null);
   const [auditEvents, setAuditEvents] = useState<AuditEvent[]>([]);
   const [selectedVersion, setSelectedVersion] = useState<DocumentVersion | null>(null);
-  const [activeTab, setActiveTab] = useState<'content' | 'assignments' | 'comments' | 'audit'>('content');
+  const [activeTab, setActiveTab] = useState<'content' | 'diff' | 'assignments' | 'comments' | 'audit'>('content');
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [actionError, setActionError] = useState('');
   const [copied, setCopied] = useState(false);
+  const [showCertificateModal, setShowCertificateModal] = useState(false);
 
   // Modals / Action states
   const [showVersionModal, setShowVersionModal] = useState(false);
@@ -554,9 +558,15 @@ export const DocumentDetailPage: React.FC = () => {
       <div className="card">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.4rem' }}>
-              <h1 style={{ fontSize: '1.75rem', fontWeight: 800 }}>{document.title}</h1>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.4rem', flexWrap: 'wrap' }}>
+              <h1 style={{ fontSize: '1.75rem', fontWeight: 800, margin: 0 }}>{document.title}</h1>
               <StatusBadge status={document.status} />
+              <SLATimerBadge
+                documentId={document.id}
+                status={document.status}
+                startTime={document.updatedAt}
+                canNudge={document.authorId === user?.id || document.myRole === 'OWNER'}
+              />
             </div>
 
             <div style={{ display: 'flex', gap: '1.25rem', fontSize: '0.875rem', color: 'var(--text-muted)', flexWrap: 'wrap' }}>
@@ -570,6 +580,31 @@ export const DocumentDetailPage: React.FC = () => {
 
           {/* Contextual Action Buttons */}
           <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
+            {/* 🛡️ Official Audit Certificate (When Approved) */}
+            {document.status === 'APPROVED' && (
+              <button
+                type="button"
+                onClick={() => setShowCertificateModal(true)}
+                className="btn btn-sm"
+                style={{
+                  background: 'linear-gradient(135deg, #b45309 0%, #d97706 100%)',
+                  color: 'white',
+                  border: 'none',
+                  fontWeight: 700,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.45rem',
+                  boxShadow: '0 2px 8px rgba(217, 119, 6, 0.3)',
+                  padding: '0.45rem 0.95rem',
+                  cursor: 'pointer',
+                }}
+                title="View official sealed 4-Eyes Compliance Audit Certificate"
+              >
+                <span>🛡️</span>
+                <span>Audit Certificate</span>
+              </button>
+            )}
+
             {/* ✨ Gemini AI Verification Button */}
             <button
               type="button"
@@ -720,6 +755,18 @@ export const DocumentDetailPage: React.FC = () => {
           Document Content
         </button>
         <button
+          className={`tab ${activeTab === 'diff' ? 'active' : ''}`}
+          onClick={() => setActiveTab('diff')}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}
+        >
+          <span>🔍 Version Diff</span>
+          {document.versions.length > 1 && (
+            <span style={{ fontSize: '0.7rem', background: activeTab === 'diff' ? '#dbeafe' : '#f1f5f9', color: activeTab === 'diff' ? '#1d4ed8' : '#64748b', padding: '1px 6px', borderRadius: '8px', fontWeight: 700 }}>
+              {document.versions.length}
+            </span>
+          )}
+        </button>
+        <button
           className={`tab ${activeTab === 'assignments' ? 'active' : ''}`}
           onClick={() => setActiveTab('assignments')}
         >
@@ -788,6 +835,16 @@ export const DocumentDetailPage: React.FC = () => {
               {selectedVersion?.content || 'No content recorded.'}
             </pre>
           </div>
+        </div>
+      )}
+
+      {/* Tab: Version Diff & Visual Comparator */}
+      {activeTab === 'diff' && (
+        <div style={{ marginTop: '0.5rem' }}>
+          <VersionDiffViewer
+            versions={document.versions}
+            currentVersionId={document.currentVersionId || undefined}
+          />
         </div>
       )}
 
@@ -1316,6 +1373,13 @@ export const DocumentDetailPage: React.FC = () => {
           setDecisionComment(note);
           setShowDecisionModal(true);
         }}
+      />
+
+      {/* 🛡️ Official 4-Eyes Compliance Audit Certificate Modal */}
+      <AuditCertificateModal
+        documentId={document.id}
+        isOpen={showCertificateModal}
+        onClose={() => setShowCertificateModal(false)}
       />
     </div>
   );

@@ -15,7 +15,6 @@ function requireAdmin(req: Request, res: Response, next: NextFunction) {
   if (
     !req.user ||
     (req.user.email !== 'admin@demo.com' &&
-     req.user.email !== 'rohanyshinde07@gmail.com' &&
      !req.user.email.startsWith('admin@'))
   ) {
     return next(new ForbiddenError('Admin access required.'));
