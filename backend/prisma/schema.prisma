@@ -1,0 +1,247 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum ProjectRole {
+  OWNER
+  AUTHOR
+  REVIEWER
+  APPROVER
+  VIEWER
+}
+
+enum DocumentStatus {
+  DRAFT
+  IN_REVIEW
+  IN_APPROVAL
+  CHANGES_REQUESTED
+  APPROVED
+  REJECTED
+}
+
+enum AssignmentStage {
+  REVIEW
+  APPROVAL
+}
+
+enum AssignmentStatus {
+  PENDING
+  APPROVED
+  CHANGES_REQUESTED
+  REJECTED
+  CANCELLED
+}
+
+enum AuditAction {
+  DOCUMENT_CREATED
+  VERSION_CREATED
+  DOCUMENT_SUBMITTED
+  REVIEW_APPROVED
+  STAGE_ADVANCED
+  APPROVAL_GRANTED
+  DOCUMENT_APPROVED
+  CHANGES_REQUESTED
+  DOCUMENT_REJECTED
+  COMMENT_ADDED
+  COMMENT_RESOLVED
+  MEMBER_ADDED
+  MEMBER_ROLE_CHANGED
+  MEMBER_REMOVED
+  INVITE_SENT
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  name         String
+  passwordHash String   @map("password_hash")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  createdProjects   Project[]          @relation("ProjectCreator")
+  memberships       ProjectMember[]
+  documents         Document[]         @relation("DocumentAuthor")
+  versions          DocumentVersion[]  @relation("VersionCreator")
+  reviewAssignments ReviewAssignment[]
+  comments          Comment[]          @relation("CommentAuthor")
+  resolvedComments  Comment[]          @relation("CommentResolver")
+  auditEvents       AuditEvent[]
+  sentInvites       ProjectInvite[]    @relation("SentInvites")
+
+  @@map("users")
+}
+
+model Project {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  createdById String   @map("created_by_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  createdBy User            @relation("ProjectCreator", fields: [createdById], references: [id])
+  members   ProjectMember[]
+  tasks     Task[]
+  documents Document[]
+  auditEvents AuditEvent[]
+  invites   ProjectInvite[]
+
+  @@map("projects")
+}
+
+model ProjectMember {
+  id        String      @id @default(uuid())
+  projectId String      @map("project_id")
+  userId    String      @map("user_id")
+  role      ProjectRole
+  createdAt DateTime    @default(now()) @map("created_at")
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, userId])
+  @@map("project_members")
+}
+
+model Task {
+  id          String   @id @default(uuid())
+  projectId   String   @map("project_id")
+  title       String
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  project   Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  documents Document[]
+
+  @@map("tasks")
+}
+
+model Document {
+  id               String         @id @default(uuid())
+  projectId        String         @map("project_id")
+  taskId           String?        @map("task_id")
+  title            String
+  authorId         String         @map("author_id")
+  status           DocumentStatus @default(DRAFT)
+  currentVersionId String?        @unique @map("current_version_id")
+  createdAt        DateTime       @default(now()) @map("created_at")
+  updatedAt        DateTime       @updatedAt @map("updated_at")
+
+  project           Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  task              Task?              @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  author            User               @relation("DocumentAuthor", fields: [authorId], references: [id])
+  currentVersion    DocumentVersion?   @relation("CurrentVersion", fields: [currentVersionId], references: [id])
+  versions          DocumentVersion[]  @relation("DocumentVersions")
+  reviewAssignments ReviewAssignment[]
+  comments          Comment[]
+  auditEvents       AuditEvent[]
+
+  @@index([projectId])
+  @@map("documents")
+}
+
+model DocumentVersion {
+  id            String   @id @default(uuid())
+  documentId    String   @map("document_id")
+  versionNumber Int      @map("version_number")
+  content       String
+  changeSummary String   @map("change_summary")
+  createdById   String   @map("created_by_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  document             Document           @relation("DocumentVersions", fields: [documentId], references: [id], onDelete: Cascade)
+  createdBy            User               @relation("VersionCreator", fields: [createdById], references: [id])
+  asCurrentVersion     Document?          @relation("CurrentVersion")
+  reviewAssignments    ReviewAssignment[]
+  comments             Comment[]          @relation("VersionComments")
+  commentsResolvedIn   Comment[]          @relation("CommentsResolvedInVersion")
+  auditEvents          AuditEvent[]
+
+  @@unique([documentId, versionNumber])
+  @@map("document_versions")
+}
+
+model ReviewAssignment {
+  id              String           @id @default(uuid())
+  documentId      String           @map("document_id")
+  versionId       String           @map("version_id")
+  userId          String           @map("user_id")
+  stage           AssignmentStage
+  status          AssignmentStatus @default(PENDING)
+  decidedAt       DateTime?        @map("decided_at")
+  decisionComment String?          @map("decision_comment")
+  createdAt       DateTime         @default(now()) @map("created_at")
+
+  document Document        @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  version  DocumentVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  user     User            @relation(fields: [userId], references: [id])
+
+  @@unique([versionId, userId, stage])
+  @@index([userId, status])
+  @@map("review_assignments")
+}
+
+model Comment {
+  id                  String    @id @default(uuid())
+  documentId          String    @map("document_id")
+  versionId           String    @map("version_id")
+  authorId            String    @map("author_id")
+  body                String
+  createdAt           DateTime  @default(now()) @map("created_at")
+  resolvedAt          DateTime? @map("resolved_at")
+  resolvedById        String?   @map("resolved_by_id")
+  resolvedInVersionId String?   @map("resolved_in_version_id")
+
+  document          Document         @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  version           DocumentVersion  @relation("VersionComments", fields: [versionId], references: [id], onDelete: Cascade)
+  author            User             @relation("CommentAuthor", fields: [authorId], references: [id])
+  resolvedBy        User?            @relation("CommentResolver", fields: [resolvedById], references: [id])
+  resolvedInVersion DocumentVersion? @relation("CommentsResolvedInVersion", fields: [resolvedInVersionId], references: [id])
+
+  @@index([documentId])
+  @@map("comments")
+}
+
+model AuditEvent {
+  id         String         @id @default(uuid())
+  projectId  String         @map("project_id")
+  documentId String?        @map("document_id")
+  versionId  String?        @map("version_id")
+  actorId    String         @map("actor_id")
+  action     AuditAction
+  fromStatus DocumentStatus? @map("from_status")
+  toStatus   DocumentStatus? @map("to_status")
+  metadata   Json?
+  createdAt  DateTime       @default(now()) @map("created_at")
+
+  project  Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  document Document?        @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  version  DocumentVersion? @relation(fields: [versionId], references: [id], onDelete: SetNull)
+  actor    User             @relation(fields: [actorId], references: [id])
+
+  @@index([documentId, createdAt])
+  @@map("audit_events")
+}
+
+model ProjectInvite {
+  id          String      @id @default(uuid())
+  projectId   String      @map("project_id")
+  invitedById String      @map("invited_by_id")
+  email       String
+  role        ProjectRole
+  token       String      @unique
+  expiresAt   DateTime    @map("expires_at")
+  acceptedAt  DateTime?   @map("accepted_at")
+  createdAt   DateTime    @default(now()) @map("created_at")
+
+  project    Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  invitedBy  User    @relation("SentInvites", fields: [invitedById], references: [id])
+
+  @@index([token])
+  @@index([projectId])
+  @@map("project_invites")
+}
+
