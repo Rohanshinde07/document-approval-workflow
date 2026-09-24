@@ -8,8 +8,9 @@ import {
   listProjectInvites,
   revokeInvite,
 } from '../services/invites.js';
-import { login } from '../services/auth.js';
+import jwt from 'jsonwebtoken';
 import { prisma } from '../db.js';
+import { config } from '../config.js';
 
 const router = Router();
 
@@ -51,14 +52,12 @@ router.post('/:token/accept', async (req: Request, res: Response, next: NextFunc
     const data = acceptSchema.parse(req.body);
     const result = await acceptInvite(token, data);
 
-    // Auto-login: generate a fresh JWT for them
-    let tokenJwt: string | null = null;
-    try {
-      const loginResult = await login(result.user.email, req.body.password || '');
-      tokenJwt = loginResult.token;
-    } catch {
-      // Password not given (existing user flow without password) — skip auto-login
-    }
+    // Auto-login: generate a fresh JWT for the user who accepted
+    const tokenJwt = jwt.sign(
+      { id: result.user.id, email: result.user.email, name: result.user.name },
+      config.jwtSecret,
+      { expiresIn: '8h' }
+    );
 
     res.json({ ...result, token: tokenJwt });
   } catch (err) {

@@ -118,30 +118,16 @@ export async function acceptInvite(
   let user = await prisma.user.findUnique({ where: { email: invite.email } });
 
   if (!user) {
-    // New user — must provide name + password to register
-    if (!payload.name || !payload.password) {
-      throw new BusinessRuleError(
-        'REGISTRATION_REQUIRED',
-        'Please provide your name and a password to create your account.'
-      );
-    }
-    if (payload.password.length < 6) {
-      throw new BusinessRuleError('WEAK_PASSWORD', 'Password must be at least 6 characters.');
-    }
-    const passwordHash = await bcrypt.hash(payload.password, 10);
+    // New user — create account with default password password123 if not provided
+    const passwordToUse = payload.password || 'password123';
+    const passwordHash = await bcrypt.hash(passwordToUse, 10);
     user = await prisma.user.create({
       data: {
         email: invite.email,
-        name: payload.name.trim(),
+        name: payload.name?.trim() || invite.email.split('@')[0],
         passwordHash,
       },
     });
-  } else if (payload.password) {
-    // Existing user providing password to accept & auto-login
-    const isValid = await bcrypt.compare(payload.password, user.passwordHash);
-    if (!isValid) {
-      throw new BusinessRuleError('INVALID_CREDENTIALS', 'Incorrect password for this account. Default demo password is password123.');
-    }
   }
 
   // Add to project

@@ -53,17 +53,11 @@ export const InviteAcceptPage: React.FC = () => {
     e?.preventDefault();
     setFormError('');
 
-    // Validation
-    if (!isExistingUserMatch) {
-      if (invite?.isExistingUser) {
-        if (!password) {
-          setFormError('Please enter your password. (Default is password123)');
-          return;
-        }
-      } else {
-        if (!name.trim()) { setFormError('Please enter your full name.'); return; }
-        if (password.length < 6) { setFormError('Password must be at least 6 characters.'); return; }
-        if (password !== confirmPassword) { setFormError('Passwords do not match.'); return; }
+    // Validation only needed for new user name
+    if (!isExistingUserMatch && !invite?.isExistingUser) {
+      if (!name.trim()) {
+        setFormError('Please enter your full name.');
+        return;
       }
     }
 
@@ -74,7 +68,7 @@ export const InviteAcceptPage: React.FC = () => {
         if (!invite?.isExistingUser) {
           body.name = name.trim();
         }
-        body.password = password;
+        body.password = 'password123';
       }
 
       const result = await apiRequest<any>(`/api/invites/${token}/accept`, {
@@ -337,10 +331,10 @@ export const InviteAcceptPage: React.FC = () => {
                   </div>
                 ) : invite.isExistingUser ? (
                   <span>
-                    Existing account detected for <strong style={{ color: '#2563eb' }}>{invite.existingUserName || invite.email}</strong>. Enter your password to accept.
+                    Existing account detected for <strong style={{ color: '#2563eb' }}>{invite.existingUserName || invite.email}</strong>. Click below to accept and join.
                   </span>
                 ) : (
-                  <span>Create your account below to accept, or <a href="/login" style={{ color: '#2563eb' }}>log in</a> if you already have one.</span>
+                  <span>Enter your name to join <strong style={{ color: '#2563eb' }}>{invite.project.name}</strong>.</span>
                 )}
               </div>
 
@@ -348,53 +342,23 @@ export const InviteAcceptPage: React.FC = () => {
                 <>
                   {invite.isExistingUser ? (
                     <>
-                      {/* Existing User Password Box */}
+                      {/* Existing User Info Box */}
                       <div
                         style={{
-                          background: 'linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%)',
-                          border: '1px solid #bbf7d0',
-                          borderRadius: '10px',
-                          padding: '0.9rem 1rem',
+                          background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
+                          border: '1px solid #e2e8f0',
+                          borderRadius: '12px',
+                          padding: '1rem',
                           marginBottom: '1.25rem',
                           display: 'flex',
                           alignItems: 'center',
-                          justifyContent: 'space-between',
                           gap: '12px',
                         }}
                       >
-                        <div style={{ fontSize: '0.875rem', color: '#166534', lineHeight: 1.4 }}>
-                          🔑 Default demo password is <strong style={{ fontFamily: 'monospace', background: '#dcfce7', padding: '2px 6px', borderRadius: '4px' }}>password123</strong>
+                        <span style={{ fontSize: '1.4rem' }}>🔑</span>
+                        <div style={{ fontSize: '0.875rem', color: '#334155', lineHeight: 1.4 }}>
+                          Your default password is: <strong style={{ fontFamily: 'monospace', background: '#e2e8f0', padding: '2px 8px', borderRadius: '4px', color: '#0f172a', fontSize: '0.95rem' }}>password123</strong>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => setPassword('password123')}
-                          style={{
-                            background: '#16a34a',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '6px',
-                            padding: '4px 10px',
-                            fontSize: '0.75rem',
-                            fontWeight: 700,
-                            cursor: 'pointer',
-                            flexShrink: 0,
-                          }}
-                        >
-                          Fill Default
-                        </button>
-                      </div>
-
-                      <div className="form-group">
-                        <label className="form-label">Password for {invite.email}</label>
-                        <input
-                          type="password"
-                          className="form-input"
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
-                          placeholder="Enter password (default: password123)"
-                          required
-                          autoFocus
-                        />
                       </div>
 
                       <button
@@ -403,50 +367,12 @@ export const InviteAcceptPage: React.FC = () => {
                         style={{ width: '100%', padding: '0.9rem', fontSize: '1rem', fontWeight: 700, marginTop: '0.5rem' }}
                         disabled={submitting}
                       >
-                        {submitting ? 'Authenticating & Joining...' : `Sign In & Join ${invite.project.name} →`}
+                        {submitting ? 'Joining Project...' : `Accept Invite & Join ${invite.project.name} →`}
                       </button>
                     </>
                   ) : (
                     <>
-                      {/* New User Registration Box */}
-                      <div
-                        style={{
-                          background: '#f8fafc',
-                          border: '1px dashed #cbd5e1',
-                          borderRadius: '10px',
-                          padding: '0.75rem 1rem',
-                          marginBottom: '1.25rem',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          gap: '12px',
-                        }}
-                      >
-                        <div style={{ fontSize: '0.85rem', color: '#475569' }}>
-                          💡 Tip: You can use default demo password <strong style={{ fontFamily: 'monospace' }}>password123</strong>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setPassword('password123');
-                            setConfirmPassword('password123');
-                          }}
-                          style={{
-                            background: '#e2e8f0',
-                            color: '#0f172a',
-                            border: 'none',
-                            borderRadius: '6px',
-                            padding: '4px 10px',
-                            fontSize: '0.75rem',
-                            fontWeight: 700,
-                            cursor: 'pointer',
-                            flexShrink: 0,
-                          }}
-                        >
-                          Use Default
-                        </button>
-                      </div>
-
+                      {/* New User: Full Name + Display Default Password */}
                       <div className="form-group">
                         <label className="form-label">Your Full Name</label>
                         <input
@@ -456,30 +382,31 @@ export const InviteAcceptPage: React.FC = () => {
                           onChange={(e) => setName(e.target.value)}
                           placeholder="e.g. Rohan Shinde"
                           required
+                          autoFocus
                         />
                       </div>
-                      <div className="form-group">
-                        <label className="form-label">Create Password</label>
-                        <input
-                          type="password"
-                          className="form-input"
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
-                          placeholder="Minimum 6 characters (e.g. password123)"
-                          required
-                        />
+
+                      <div
+                        style={{
+                          background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
+                          border: '1px solid #e2e8f0',
+                          borderRadius: '12px',
+                          padding: '1rem',
+                          marginBottom: '1.25rem',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '12px',
+                        }}
+                      >
+                        <span style={{ fontSize: '1.4rem' }}>🔑</span>
+                        <div style={{ fontSize: '0.875rem', color: '#334155', lineHeight: 1.4 }}>
+                          Your default password is: <strong style={{ fontFamily: 'monospace', background: '#e2e8f0', padding: '2px 8px', borderRadius: '4px', color: '#0f172a', fontSize: '0.95rem' }}>password123</strong>
+                          <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '0.25rem' }}>
+                            You can use this password to sign in next time.
+                          </div>
+                        </div>
                       </div>
-                      <div className="form-group">
-                        <label className="form-label">Confirm Password</label>
-                        <input
-                          type="password"
-                          className="form-input"
-                          value={confirmPassword}
-                          onChange={(e) => setConfirmPassword(e.target.value)}
-                          placeholder="Repeat password"
-                          required
-                        />
-                      </div>
+
                       <button
                         type="submit"
                         className="btn btn-primary"
