@@ -123,7 +123,7 @@ router.get('/projects', async (req: Request, res: Response, next: NextFunction) 
 // GET /api/admin/projects/:id/documents — all documents in a project (admin view)
 router.get('/projects/:id/documents', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const projectId = req.params.id;
+    const projectId = req.params.id as string;
     const docs = await prisma.document.findMany({
       where: { projectId },
       include: {

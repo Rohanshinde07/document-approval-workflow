@@ -10,12 +10,14 @@ interface InviteDetails {
   expiresAt: string;
   project: { id: string; name: string; description?: string };
   invitedBy: { name: string; email: string };
+  isExistingUser?: boolean;
+  existingUserName?: string | null;
 }
 
 export const InviteAcceptPage: React.FC = () => {
   const { token } = useParams<{ token: string }>();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
 
   const [invite, setInvite] = useState<InviteDetails | null>(null);
   const [loading, setLoading] = useState(true);
@@ -33,7 +35,13 @@ export const InviteAcceptPage: React.FC = () => {
   useEffect(() => {
     if (!token) return;
     apiRequest<InviteDetails>(`/api/invites/${token}`)
-      .then((data) => setInvite(data))
+      .then((data) => {
+        setInvite(data);
+        if (data.isExistingUser) {
+          // Pre-populate with default demo password for quick 1-click convenience
+          setPassword('password123');
+        }
+      })
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
   }, [token]);
@@ -45,18 +53,27 @@ export const InviteAcceptPage: React.FC = () => {
     e?.preventDefault();
     setFormError('');
 
-    // Validation for new users
+    // Validation
     if (!isExistingUserMatch) {
-      if (!name.trim()) { setFormError('Please enter your full name.'); return; }
-      if (password.length < 6) { setFormError('Password must be at least 6 characters.'); return; }
-      if (password !== confirmPassword) { setFormError('Passwords do not match.'); return; }
+      if (invite?.isExistingUser) {
+        if (!password) {
+          setFormError('Please enter your password. (Default is password123)');
+          return;
+        }
+      } else {
+        if (!name.trim()) { setFormError('Please enter your full name.'); return; }
+        if (password.length < 6) { setFormError('Password must be at least 6 characters.'); return; }
+        if (password !== confirmPassword) { setFormError('Passwords do not match.'); return; }
+      }
     }
 
     setSubmitting(true);
     try {
       const body: any = {};
       if (!isExistingUserMatch) {
-        body.name = name.trim();
+        if (!invite?.isExistingUser) {
+          body.name = name.trim();
+        }
         body.password = password;
       }
 
@@ -299,8 +316,28 @@ export const InviteAcceptPage: React.FC = () => {
                 This invite is for <strong style={{ color: '#2563eb' }}>{invite.email}</strong>.
                 {' '}
                 {user ? (
-                  <span style={{ color: '#dc2626' }}>
-                    You're currently logged in as a different user. Sign out first, or use the link on the correct account.
+                  <div style={{ marginTop: '0.75rem', background: '#fef2f2', border: '1px solid #fecaca', padding: '1rem', borderRadius: '10px' }}>
+                    <div style={{ color: '#dc2626', fontWeight: 600, marginBottom: '0.35rem', fontSize: '0.9rem' }}>
+                      ⚠️ Account Mismatch
+                    </div>
+                    <div style={{ fontSize: '0.85rem', color: '#475569', marginBottom: '0.75rem', lineHeight: 1.5 }}>
+                      You're currently signed in as <strong>{user.email}</strong>, but this invitation is for <strong style={{ color: '#2563eb' }}>{invite.email}</strong>.
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        logout();
+                        window.location.reload();
+                      }}
+                      className="btn btn-secondary btn-sm"
+                      style={{ background: 'white', border: '1px solid #f87171', color: '#dc2626', fontWeight: 600 }}
+                    >
+                      Sign Out of {user.email} & Continue →
+                    </button>
+                  </div>
+                ) : invite.isExistingUser ? (
+                  <span>
+                    Existing account detected for <strong style={{ color: '#2563eb' }}>{invite.existingUserName || invite.email}</strong>. Enter your password to accept.
                   </span>
                 ) : (
                   <span>Create your account below to accept, or <a href="/login" style={{ color: '#2563eb' }}>log in</a> if you already have one.</span>
@@ -309,47 +346,150 @@ export const InviteAcceptPage: React.FC = () => {
 
               {!user && (
                 <>
-                  <div className="form-group">
-                    <label className="form-label">Your Full Name</label>
-                    <input
-                      type="text"
-                      className="form-input"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      placeholder="e.g. Rohan Shinde"
-                      required
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Create Password</label>
-                    <input
-                      type="password"
-                      className="form-input"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="Minimum 6 characters"
-                      required
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Confirm Password</label>
-                    <input
-                      type="password"
-                      className="form-input"
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      placeholder="Repeat password"
-                      required
-                    />
-                  </div>
-                  <button
-                    type="submit"
-                    className="btn btn-primary"
-                    style={{ width: '100%', padding: '0.9rem', fontSize: '1rem', fontWeight: 700, marginTop: '0.5rem' }}
-                    disabled={submitting || !!user}
-                  >
-                    {submitting ? 'Creating Account & Joining...' : 'Create Account & Join Project →'}
-                  </button>
+                  {invite.isExistingUser ? (
+                    <>
+                      {/* Existing User Password Box */}
+                      <div
+                        style={{
+                          background: 'linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%)',
+                          border: '1px solid #bbf7d0',
+                          borderRadius: '10px',
+                          padding: '0.9rem 1rem',
+                          marginBottom: '1.25rem',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: '12px',
+                        }}
+                      >
+                        <div style={{ fontSize: '0.875rem', color: '#166534', lineHeight: 1.4 }}>
+                          🔑 Default demo password is <strong style={{ fontFamily: 'monospace', background: '#dcfce7', padding: '2px 6px', borderRadius: '4px' }}>password123</strong>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setPassword('password123')}
+                          style={{
+                            background: '#16a34a',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '6px',
+                            padding: '4px 10px',
+                            fontSize: '0.75rem',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            flexShrink: 0,
+                          }}
+                        >
+                          Fill Default
+                        </button>
+                      </div>
+
+                      <div className="form-group">
+                        <label className="form-label">Password for {invite.email}</label>
+                        <input
+                          type="password"
+                          className="form-input"
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          placeholder="Enter password (default: password123)"
+                          required
+                          autoFocus
+                        />
+                      </div>
+
+                      <button
+                        type="submit"
+                        className="btn btn-primary"
+                        style={{ width: '100%', padding: '0.9rem', fontSize: '1rem', fontWeight: 700, marginTop: '0.5rem' }}
+                        disabled={submitting}
+                      >
+                        {submitting ? 'Authenticating & Joining...' : `Sign In & Join ${invite.project.name} →`}
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      {/* New User Registration Box */}
+                      <div
+                        style={{
+                          background: '#f8fafc',
+                          border: '1px dashed #cbd5e1',
+                          borderRadius: '10px',
+                          padding: '0.75rem 1rem',
+                          marginBottom: '1.25rem',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: '12px',
+                        }}
+                      >
+                        <div style={{ fontSize: '0.85rem', color: '#475569' }}>
+                          💡 Tip: You can use default demo password <strong style={{ fontFamily: 'monospace' }}>password123</strong>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPassword('password123');
+                            setConfirmPassword('password123');
+                          }}
+                          style={{
+                            background: '#e2e8f0',
+                            color: '#0f172a',
+                            border: 'none',
+                            borderRadius: '6px',
+                            padding: '4px 10px',
+                            fontSize: '0.75rem',
+                            fontWeight: 700,
+                            cursor: 'pointer',
+                            flexShrink: 0,
+                          }}
+                        >
+                          Use Default
+                        </button>
+                      </div>
+
+                      <div className="form-group">
+                        <label className="form-label">Your Full Name</label>
+                        <input
+                          type="text"
+                          className="form-input"
+                          value={name}
+                          onChange={(e) => setName(e.target.value)}
+                          placeholder="e.g. Rohan Shinde"
+                          required
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">Create Password</label>
+                        <input
+                          type="password"
+                          className="form-input"
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          placeholder="Minimum 6 characters (e.g. password123)"
+                          required
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">Confirm Password</label>
+                        <input
+                          type="password"
+                          className="form-input"
+                          value={confirmPassword}
+                          onChange={(e) => setConfirmPassword(e.target.value)}
+                          placeholder="Repeat password"
+                          required
+                        />
+                      </div>
+                      <button
+                        type="submit"
+                        className="btn btn-primary"
+                        style={{ width: '100%', padding: '0.9rem', fontSize: '1rem', fontWeight: 700, marginTop: '0.5rem' }}
+                        disabled={submitting}
+                      >
+                        {submitting ? 'Creating Account & Joining...' : 'Create Account & Join Project →'}
+                      </button>
+                    </>
+                  )}
                 </>
               )}
             </form>

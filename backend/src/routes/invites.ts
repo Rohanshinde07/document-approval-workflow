@@ -9,6 +9,7 @@ import {
   revokeInvite,
 } from '../services/invites.js';
 import { login } from '../services/auth.js';
+import { prisma } from '../db.js';
 
 const router = Router();
 
@@ -17,13 +18,21 @@ const router = Router();
 // GET /api/invites/:token — get invite details for the accept page
 router.get('/:token', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const invite = await getInviteByToken(req.params.token);
+    const token = req.params.token as string;
+    const invite = await getInviteByToken(token);
+    const existingUser = await prisma.user.findUnique({
+      where: { email: invite.email },
+      select: { id: true, name: true, email: true },
+    });
+
     res.json({
       email: invite.email,
       role: invite.role,
       expiresAt: invite.expiresAt,
       project: invite.project,
       invitedBy: invite.invitedBy,
+      isExistingUser: !!existingUser,
+      existingUserName: existingUser?.name || null,
     });
   } catch (err) {
     next(err);
@@ -38,19 +47,20 @@ const acceptSchema = z.object({
 
 router.post('/:token/accept', async (req: Request, res: Response, next: NextFunction) => {
   try {
+    const token = req.params.token as string;
     const data = acceptSchema.parse(req.body);
-    const result = await acceptInvite(req.params.token, data);
+    const result = await acceptInvite(token, data);
 
     // Auto-login: generate a fresh JWT for them
-    let token: string | null = null;
+    let tokenJwt: string | null = null;
     try {
       const loginResult = await login(result.user.email, req.body.password || '');
-      token = loginResult.token;
+      tokenJwt = loginResult.token;
     } catch {
       // Password not given (existing user flow without password) — skip auto-login
     }
 
-    res.json({ ...result, token });
+    res.json({ ...result, token: tokenJwt });
   } catch (err) {
     next(err);
   }
@@ -67,7 +77,7 @@ const sendInviteSchema = z.object({
 
 router.post('/projects/:id/send', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { id } = req.params;
+    const id = req.params.id as string;
     const data = sendInviteSchema.parse(req.body);
     const result = await sendProjectInvite(id, req.user!.id, data.email, data.role);
     res.status(201).json(result);
@@ -79,7 +89,8 @@ router.post('/projects/:id/send', async (req: Request, res: Response, next: Next
 // GET /api/invites/projects/:id/pending — list pending invites
 router.get('/projects/:id/pending', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const invites = await listProjectInvites(req.params.id, req.user!.id);
+    const id = req.params.id as string;
+    const invites = await listProjectInvites(id, req.user!.id);
     res.json(invites);
   } catch (err) {
     next(err);
@@ -89,7 +100,8 @@ router.get('/projects/:id/pending', async (req: Request, res: Response, next: Ne
 // DELETE /api/invites/:inviteId — revoke an invite
 router.delete('/:inviteId', async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const result = await revokeInvite(req.params.inviteId, req.user!.id);
+    const inviteId = req.params.inviteId as string;
+    const result = await revokeInvite(inviteId, req.user!.id);
     res.json(result);
   } catch (err) {
     next(err);

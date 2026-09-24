@@ -136,6 +136,12 @@ export async function acceptInvite(
         passwordHash,
       },
     });
+  } else if (payload.password) {
+    // Existing user providing password to accept & auto-login
+    const isValid = await bcrypt.compare(payload.password, user.passwordHash);
+    if (!isValid) {
+      throw new BusinessRuleError('INVALID_CREDENTIALS', 'Incorrect password for this account. Default demo password is password123.');
+    }
   }
 
   // Add to project
