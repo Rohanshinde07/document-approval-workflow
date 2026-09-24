@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useAuth } from '../context/AuthContext.js';
 import { setStoredToken, getStoredToken } from '../api/client.js';
 
@@ -211,120 +212,201 @@ export const PersonaSwitcher: React.FC = () => {
         </button>
       </div>
 
-      {/* Switcher Modal */}
-      {isOpen && (
-        <div className="modal-backdrop" onClick={() => setIsOpen(false)} style={{ zIndex: 1300 }}>
+      {/* Switcher Modal - rendered via portal to prevent sidebar clipping */}
+      {isOpen &&
+        createPortal(
           <div
-            className="modal-card"
-            onClick={(e) => e.stopPropagation()}
+            className="modal-overlay"
+            onClick={() => setIsOpen(false)}
             style={{
-              maxWidth: '560px',
-              width: '95%',
-              borderRadius: '16px',
-              padding: '1.75rem',
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              width: '100vw',
+              height: '100vh',
+              backgroundColor: 'rgba(15, 23, 42, 0.7)',
+              backdropFilter: 'blur(4px)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 9999,
+              padding: '1rem',
             }}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.75rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <span style={{ fontSize: '1.5rem' }}>🎭</span>
-                <div>
-                  <h3 style={{ fontSize: '1.15rem', fontWeight: 800, margin: 0, color: '#0f172a' }}>
-                    1-Click Demo Persona Switcher
-                  </h3>
-                  <div style={{ fontSize: '0.78rem', color: '#64748b', marginTop: '0.1rem' }}>
-                    Instant role test without entering credentials (Owner feature)
+            <div
+              className="modal"
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                maxWidth: '620px',
+                width: '100%',
+                maxHeight: '88vh',
+                overflowY: 'auto',
+                background: '#ffffff',
+                borderRadius: '16px',
+                padding: '1.75rem',
+                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+                border: '1px solid #e2e8f0',
+              }}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginBottom: '1.25rem',
+                  borderBottom: '1px solid #e2e8f0',
+                  paddingBottom: '0.85rem',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                  <span style={{ fontSize: '1.6rem' }}>🎭</span>
+                  <div>
+                    <h3 style={{ fontSize: '1.2rem', fontWeight: 800, margin: 0, color: '#0f172a' }}>
+                      1-Click Demo Persona Switcher
+                    </h3>
+                    <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '0.15rem' }}>
+                      Instant role test without entering credentials (Owner feature)
+                    </div>
                   </div>
                 </div>
+                <button
+                  onClick={() => setIsOpen(false)}
+                  className="modal-close"
+                  style={{
+                    fontSize: '1.5rem',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    color: '#64748b',
+                    padding: '0.25rem',
+                    lineHeight: 1,
+                  }}
+                  title="Close modal"
+                >
+                  ×
+                </button>
               </div>
-              <button
-                onClick={() => setIsOpen(false)}
-                className="modal-close"
-                style={{ fontSize: '1.4rem', background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}
-              >
-                ×
-              </button>
-            </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              {DEMO_PERSONAS.map((persona) => {
-                const isCurrent = user.email === persona.email;
-                const isBusy = switching === persona.email;
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                {DEMO_PERSONAS.map((persona) => {
+                  const isCurrent = user.email === persona.email;
+                  const isBusy = switching === persona.email;
 
-                return (
-                  <div
-                    key={persona.email}
-                    onClick={() => !isCurrent && !switching && handleSwitch(persona)}
-                    style={{
-                      background: isCurrent ? 'linear-gradient(135deg, #eff6ff 0%, #f0fdf4 100%)' : 'white',
-                      border: isCurrent ? '2px solid #2563eb' : '1px solid #e2e8f0',
-                      borderRadius: '12px',
-                      padding: '0.85rem 1rem',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      cursor: isCurrent ? 'default' : 'pointer',
-                      transition: 'all 0.15s ease',
-                      boxShadow: isCurrent ? '0 2px 8px rgba(37,99,235,0.1)' : 'none',
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
-                      <span style={{ fontSize: '1.5rem' }}>{persona.icon}</span>
-                      <div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                          <span style={{ fontWeight: 700, fontSize: '0.9rem', color: '#0f172a' }}>
-                            {persona.name}
-                          </span>
-                          <span
+                  return (
+                    <div
+                      key={persona.email}
+                      onClick={() => !isCurrent && !switching && handleSwitch(persona)}
+                      style={{
+                        background: isCurrent ? 'linear-gradient(135deg, #eff6ff 0%, #f0fdf4 100%)' : 'white',
+                        border: isCurrent ? '2px solid #2563eb' : '1px solid #e2e8f0',
+                        borderRadius: '12px',
+                        padding: '0.9rem 1.1rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        cursor: isCurrent ? 'default' : 'pointer',
+                        transition: 'all 0.15s ease',
+                        boxShadow: isCurrent ? '0 2px 8px rgba(37,99,235,0.1)' : '0 1px 2px rgba(0,0,0,0.03)',
+                        gap: '0.75rem',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', flex: 1, minWidth: 0 }}>
+                        <span style={{ fontSize: '1.5rem', flexShrink: 0 }}>{persona.icon}</span>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                            <span style={{ fontWeight: 700, fontSize: '0.92rem', color: '#0f172a' }}>
+                              {persona.name}
+                            </span>
+                            <span
+                              style={{
+                                background: `${persona.badgeColor}15`,
+                                color: persona.badgeColor,
+                                border: `1px solid ${persona.badgeColor}40`,
+                                borderRadius: '10px',
+                                padding: '1px 8px',
+                                fontSize: '0.7rem',
+                                fontWeight: 700,
+                                flexShrink: 0,
+                              }}
+                            >
+                              {persona.role}
+                            </span>
+                            {isCurrent && (
+                              <span
+                                style={{
+                                  fontSize: '0.7rem',
+                                  background: '#2563eb',
+                                  color: 'white',
+                                  padding: '1px 6px',
+                                  borderRadius: '4px',
+                                  fontWeight: 600,
+                                  flexShrink: 0,
+                                }}
+                              >
+                                Active
+                              </span>
+                            )}
+                          </div>
+                          <div
                             style={{
-                              background: `${persona.badgeColor}15`,
-                              color: persona.badgeColor,
-                              border: `1px solid ${persona.badgeColor}40`,
-                              borderRadius: '10px',
-                              padding: '1px 7px',
-                              fontSize: '0.7rem',
-                              fontWeight: 700,
+                              fontSize: '0.78rem',
+                              color: '#64748b',
+                              marginTop: '0.2rem',
+                              lineHeight: 1.35,
+                              whiteSpace: 'normal',
+                              wordBreak: 'break-word',
                             }}
                           >
-                            {persona.role}
-                          </span>
-                          {isCurrent && (
-                            <span style={{ fontSize: '0.7rem', background: '#2563eb', color: 'white', padding: '1px 6px', borderRadius: '4px', fontWeight: 600 }}>
-                              Active
-                            </span>
-                          )}
-                        </div>
-                        <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.15rem' }}>
-                          {persona.description}
+                            {persona.description}
+                          </div>
                         </div>
                       </div>
+
+                      {!isCurrent && (
+                        <button
+                          type="button"
+                          className="btn btn-secondary btn-sm"
+                          disabled={!!switching}
+                          style={{
+                            fontSize: '0.78rem',
+                            padding: '0.4rem 0.9rem',
+                            flexShrink: 0,
+                            fontWeight: 600,
+                          }}
+                        >
+                          {isBusy ? 'Switching...' : 'Switch →'}
+                        </button>
+                      )}
                     </div>
+                  );
+                })}
+              </div>
 
-                    {!isCurrent && (
-                      <button
-                        type="button"
-                        className="btn btn-secondary btn-sm"
-                        disabled={!!switching}
-                        style={{ fontSize: '0.75rem', padding: '0.35rem 0.85rem', flexShrink: 0 }}
-                      >
-                        {isBusy ? 'Switching...' : 'Switch →'}
-                      </button>
-                    )}
-                  </div>
-                );
-              })}
+              <div
+                style={{
+                  marginTop: '1.5rem',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  flexWrap: 'wrap',
+                  gap: '0.75rem',
+                  borderTop: '1px solid #f1f5f9',
+                  paddingTop: '1rem',
+                }}
+              >
+                <span style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                  Default demo password: <code style={{ fontFamily: 'monospace', fontWeight: 700, background: '#f1f5f9', padding: '2px 6px', borderRadius: '4px' }}>password123</code>
+                </span>
+                <button onClick={() => setIsOpen(false)} className="btn btn-secondary btn-sm" style={{ padding: '0.4rem 1rem' }}>
+                  Close
+                </button>
+              </div>
             </div>
-
-            <div style={{ marginTop: '1.25rem', textAlign: 'right', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
-                Default demo password: <code style={{ fontFamily: 'monospace' }}>password123</code>
-              </span>
-              <button onClick={() => setIsOpen(false)} className="btn btn-secondary btn-sm">
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body
+        )}
     </>
   );
 };

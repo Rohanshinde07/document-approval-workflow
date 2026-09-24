@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 
 interface Props {
   isOpen: boolean;
@@ -8,18 +9,40 @@ interface Props {
 export const WorkflowGuideModal: React.FC<Props> = ({ isOpen, onClose }) => {
   if (!isOpen) return null;
 
-  return (
-    <div className="modal-backdrop" onClick={onClose} style={{ zIndex: 1200 }}>
+  return createPortal(
+    <div
+      className="modal-overlay"
+      onClick={onClose}
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        width: '100vw',
+        height: '100vh',
+        backgroundColor: 'rgba(15, 23, 42, 0.7)',
+        backdropFilter: 'blur(4px)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 9999,
+        padding: '1rem',
+      }}
+    >
       <div
-        className="modal-card"
+        className="modal"
         onClick={(e) => e.stopPropagation()}
         style={{
-          maxWidth: '760px',
-          width: '95%',
-          maxHeight: '90vh',
+          maxWidth: '780px',
+          width: '100%',
+          maxHeight: '88vh',
           overflowY: 'auto',
           borderRadius: '16px',
           padding: '2rem',
+          background: '#ffffff',
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+          border: '1px solid #e2e8f0',
         }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '1rem' }}>
@@ -172,6 +195,7 @@ export const WorkflowGuideModal: React.FC<Props> = ({ isOpen, onClose }) => {
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
