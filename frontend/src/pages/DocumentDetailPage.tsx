@@ -337,6 +337,112 @@ export const DocumentDetailPage: React.FC = () => {
       </div>
 
       {/* Role Context Guidance Card */}
+      {/* Stage 1 Draft Guidance Banner */}
+      {document.status === 'DRAFT' && (
+        <div
+          style={{
+            background: 'linear-gradient(135deg, #eff6ff 0%, #f8fafc 100%)',
+            border: '1px solid #bfdbfe',
+            borderRadius: '10px',
+            padding: '1.2rem 1.5rem',
+            marginBottom: '1.5rem',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: '1rem',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+            <span style={{ fontSize: '1.6rem' }}>⏳</span>
+            <div>
+              <div style={{ fontWeight: 700, color: '#1e40af', fontSize: '0.95rem' }}>
+                Stage 1: Draft Mode Active
+              </div>
+              <div style={{ color: '#475569', fontSize: '0.85rem', marginTop: '0.2rem' }}>
+                {document.authorId === user?.id ? (
+                  <>
+                    You are drafting this document. Review content and when ready, click <strong>"Submit for Review"</strong> to assign reviewers and move to Stage 2.
+                  </>
+                ) : (
+                  <>
+                    Author (<strong>{document.author?.name}</strong>) is currently preparing this draft. Once they click <strong>"Submit for Review"</strong>, Stage 2 (Technical Review) will unlock and your <strong>Complete Review</strong> buttons will appear here.
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+          {hasAction('SUBMIT') && (
+            <button onClick={handleSubmitDoc} className="btn btn-primary" disabled={submittingAction}>
+              {submittingAction ? 'Submitting...' : '🚀 Submit for Review →'}
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Stage 2 Active Review Banner */}
+      {document.status === 'IN_REVIEW' && (
+        <div
+          style={{
+            background: 'linear-gradient(135deg, #eff6ff 0%, #f0fdf4 100%)',
+            border: '1px solid #93c5fd',
+            borderRadius: '10px',
+            padding: '1.2rem 1.5rem',
+            marginBottom: '1.5rem',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: '1rem',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+            <span style={{ fontSize: '1.6rem' }}>🔍</span>
+            <div>
+              <div style={{ fontWeight: 700, color: '#1e40af', fontSize: '0.95rem' }}>
+                Stage 2: Technical Review Active
+              </div>
+              <div style={{ color: '#475569', fontSize: '0.85rem', marginTop: '0.2rem' }}>
+                {hasAction('DECIDE_REVIEW') ? (
+                  <>
+                    You are an assigned <strong>Reviewer</strong>. Please evaluate the content below, add inline comments in <em>Feedback Thread</em> if needed, and complete your review.
+                  </>
+                ) : (
+                  <>Technical reviewers are actively examining this document version.</>
+                )}
+              </div>
+            </div>
+          </div>
+          {hasAction('DECIDE_REVIEW') && (
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <button
+                onClick={() => {
+                  setDecisionType('APPROVE');
+                  setDecisionComment('');
+                  setShowDecisionModal(true);
+                }}
+                className="btn btn-primary"
+                style={{ background: '#16a34a', fontWeight: 700 }}
+              >
+                ✓ Complete Review (Approve)
+              </button>
+              <button
+                onClick={() => {
+                  setDecisionType('REQUEST_CHANGES');
+                  setDecisionComment('');
+                  setShowDecisionModal(true);
+                }}
+                className="btn btn-secondary"
+                style={{ border: '1px solid #d97706', color: '#b45309', fontWeight: 600 }}
+              >
+                🔄 Request Changes
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Role Context Guidance Card for Changes Requested */}
       {document.status === 'CHANGES_REQUESTED' && document.authorId === user?.id && (
         <div
           style={{
@@ -427,28 +533,63 @@ export const DocumentDetailPage: React.FC = () => {
                 {submittingAction
                   ? 'Submitting...'
                   : document.status === 'CHANGES_REQUESTED'
-                  ? 'Resubmit Document'
-                  : 'Submit for Review'}
+                  ? '🚀 Resubmit Document'
+                  : '🚀 Submit for Review'}
               </button>
             )}
 
-            {(hasAction('DECIDE_REVIEW') || hasAction('DECIDE_APPROVAL')) && (
-              <button
-                onClick={() => {
-                  setDecisionType('APPROVE');
-                  setDecisionComment('');
-                  setShowDecisionModal(true);
-                }}
-                className="btn btn-primary"
-                style={{
-                  background:
-                    document.status === 'IN_APPROVAL'
-                      ? 'linear-gradient(135deg, #15803d, #16a34a)'
-                      : 'linear-gradient(135deg, #2563eb, #7c3aed)',
-                }}
-              >
-                {document.status === 'IN_APPROVAL' ? '🛡️ Final Sign-off Decision' : '⚖ Record Review Decision'}
-              </button>
+            {hasAction('DECIDE_REVIEW') && (
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button
+                  onClick={() => {
+                    setDecisionType('APPROVE');
+                    setDecisionComment('');
+                    setShowDecisionModal(true);
+                  }}
+                  className="btn btn-primary"
+                  style={{ background: '#16a34a', fontWeight: 700 }}
+                >
+                  ✓ Complete Review (Approve)
+                </button>
+                <button
+                  onClick={() => {
+                    setDecisionType('REQUEST_CHANGES');
+                    setDecisionComment('');
+                    setShowDecisionModal(true);
+                  }}
+                  className="btn btn-secondary"
+                  style={{ border: '1px solid #d97706', color: '#b45309', fontWeight: 600 }}
+                >
+                  🔄 Request Changes
+                </button>
+              </div>
+            )}
+
+            {hasAction('DECIDE_APPROVAL') && (
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button
+                  onClick={() => {
+                    setDecisionType('APPROVE');
+                    setDecisionComment('');
+                    setShowDecisionModal(true);
+                  }}
+                  className="btn btn-primary"
+                  style={{ background: 'linear-gradient(135deg, #15803d, #16a34a)', fontWeight: 700 }}
+                >
+                  🛡️ Final Sign-off (Approve)
+                </button>
+                <button
+                  onClick={() => {
+                    setDecisionType('REJECT');
+                    setDecisionComment('');
+                    setShowDecisionModal(true);
+                  }}
+                  className="btn btn-secondary"
+                  style={{ border: '1px solid #dc2626', color: '#dc2626', fontWeight: 600 }}
+                >
+                  ❌ Reject
+                </button>
+              </div>
             )}
           </div>
         </div>
