@@ -39,12 +39,36 @@ export async function getUserQueue(userId: string) {
       document: assignment.document,
     }));
 
-  // Find documents authored by user needing changes
+  // Check if user is admin or find their project memberships
+  const currentUser = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { role: true },
+  });
+  const isAdmin = currentUser?.role === 'ADMIN';
+
+  const memberships = await prisma.projectMember.findMany({
+    where: { userId },
+    select: { projectId: true, role: true },
+  });
+
+  const memberProjectIds = memberships.map((m) => m.projectId);
+  const ownedProjectIds = memberships
+    .filter((m) => m.role === 'OWNER')
+    .map((m) => m.projectId);
+
+  // Find documents needing changes: authored by user OR in projects owned by user
+  const needingChangesWhere: any = isAdmin
+    ? { status: 'CHANGES_REQUESTED' }
+    : {
+        OR: [
+          { authorId: userId },
+          ...(ownedProjectIds.length > 0 ? [{ projectId: { in: ownedProjectIds } }] : []),
+        ],
+        status: 'CHANGES_REQUESTED',
+      };
+
   const needingChanges = await prisma.document.findMany({
-    where: {
-      authorId: userId,
-      status: 'CHANGES_REQUESTED',
-    },
+    where: needingChangesWhere,
     include: {
       project: { select: { id: true, name: true } },
       task: { select: { id: true, title: true } },
@@ -58,11 +82,18 @@ export async function getUserQueue(userId: string) {
     orderBy: { updatedAt: 'desc' },
   });
 
-  // Find all documents authored by user
+  // Find all accessible documents: authored by user OR in their workspace projects
+  const myDocsWhere: any = isAdmin
+    ? {}
+    : {
+        OR: [
+          { authorId: userId },
+          ...(memberProjectIds.length > 0 ? [{ projectId: { in: memberProjectIds } }] : []),
+        ],
+      };
+
   const myDocuments = await prisma.document.findMany({
-    where: {
-      authorId: userId,
-    },
+    where: myDocsWhere,
     include: {
       project: { select: { id: true, name: true } },
       task: { select: { id: true, title: true } },

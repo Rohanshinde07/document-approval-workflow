@@ -15,11 +15,11 @@ interface Persona {
 const DEMO_PERSONAS: Persona[] = [
   {
     role: 'OWNER',
-    name: 'Rohan Shinde',
+    name: 'Project Owner',
     email: 'rohanyshinde07@gmail.com',
     badgeColor: '#7c3aed',
     icon: '👑',
-    description: 'Project Owner: Create projects, manage team, send invites',
+    description: 'Project Owner: Create projects, manage team, send invites & supervise workflow',
   },
   {
     role: 'ADMIN',
@@ -27,39 +27,39 @@ const DEMO_PERSONAS: Persona[] = [
     email: 'admin@demo.com',
     badgeColor: '#4338ca',
     icon: '⚙️',
-    description: 'System Admin: Global audit logs, metrics & project control',
+    description: 'System Admin: Global audit logs, metrics, compliance monitoring & system control',
   },
   {
     role: 'AUTHOR',
-    name: 'RohanTest',
+    name: 'Document Author',
     email: 'rohantrueview07@gmail.com',
     badgeColor: '#2563eb',
     icon: '✍️',
-    description: 'Document Author: Drafts specs with templates, creates versions',
+    description: 'Document Author: Drafts specs with templates, creates versions & submits for review',
   },
   {
     role: 'REVIEWER',
-    name: 'Rohanreview',
+    name: 'Technical Reviewer',
     email: 'rohanyshinde21@gmail.com',
     badgeColor: '#d97706',
     icon: '🔍',
-    description: 'Technical Reviewer: Stage 2 Review, inline feedback, approve/request changes',
+    description: 'Technical Reviewer: Stage 2 Review, inline feedback, approve or request changes',
   },
   {
     role: 'APPROVER',
-    name: 'Rohanapprove',
+    name: 'Executive Approver',
     email: 'rohanyogeshshinde0@gmail.com',
     badgeColor: '#16a34a',
     icon: '🛡️',
-    description: 'Executive Approver: Stage 3 Final sign-off or executive rejection',
+    description: 'Executive Approver: Stage 3 Final sign-off or executive rejection with note',
   },
   {
     role: 'VIEWER',
-    name: 'Rohanview',
+    name: 'Stakeholder Viewer',
     email: 'k10xlegit@gmail.com',
     badgeColor: '#64748b',
     icon: '👁️',
-    description: 'Stakeholder Viewer: Read-only access to published documents',
+    description: 'Stakeholder Viewer: Read-only access to published documents & immutable audit logs',
   },
 ];
 
@@ -74,6 +74,7 @@ export const PersonaSwitcher: React.FC = () => {
   const isOwnerOrAdmin =
     user.email === 'admin@demo.com' ||
     user.email === 'rohanyshinde07@gmail.com' ||
+    user.role === 'ADMIN' ||
     user.email.startsWith('admin@');
 
   // Only owners/admins can see persona switcher (or anyone currently impersonating)
@@ -109,106 +110,39 @@ export const PersonaSwitcher: React.FC = () => {
     }
   };
 
-  const handleExitPersona = () => {
-    const savedToken = sessionStorage.getItem('demo_original_admin');
-    if (savedToken) {
-      setStoredToken(savedToken);
-      sessionStorage.removeItem('demo_original_admin');
-      sessionStorage.removeItem('demo_original_admin_email');
-      window.location.reload();
-    }
-  };
-
   return (
     <>
-      {/* Top Banner when an impersonated persona is active */}
-      {originalAdminToken && (
-        <div
-          style={{
-            background: 'linear-gradient(90deg, #1e1b4b 0%, #312e81 100%)',
-            color: 'white',
-            padding: '0.5rem 1.5rem',
-            fontSize: '0.825rem',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-            position: 'sticky',
-            top: 0,
-            zIndex: 1000,
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <span style={{ fontSize: '1rem' }}>🎭</span>
-            <span>
-              Testing Persona Mode: Currently active as <strong>{user.name}</strong> ({user.email})
-            </span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <button
-              onClick={() => setIsOpen(true)}
-              style={{
-                background: 'rgba(255, 255, 255, 0.15)',
-                border: '1px solid rgba(255, 255, 255, 0.3)',
-                color: 'white',
-                padding: '3px 10px',
-                borderRadius: '6px',
-                fontSize: '0.75rem',
-                cursor: 'pointer',
-                fontWeight: 600,
-              }}
-            >
-              Switch Role
-            </button>
-            <button
-              onClick={handleExitPersona}
-              style={{
-                background: '#4f46e5',
-                border: 'none',
-                color: 'white',
-                padding: '3px 12px',
-                borderRadius: '6px',
-                fontSize: '0.75rem',
-                cursor: 'pointer',
-                fontWeight: 700,
-              }}
-            >
-              ✕ Exit & Return to Owner
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Button in Sidebar / Header */}
-      <div style={{ margin: '0.5rem 0' }}>
+      {/* Sleek Button in Sidebar */}
+      <div style={{ margin: '0.35rem 0' }}>
         <button
           onClick={() => setIsOpen(true)}
           style={{
             width: '100%',
-            background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(168, 85, 247, 0.1) 100%)',
-            border: '1px dashed #818cf8',
+            background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(168, 85, 247, 0.08) 100%)',
+            border: '1px solid rgba(99, 102, 241, 0.25)',
             borderRadius: '10px',
             padding: '0.65rem 0.85rem',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
             cursor: 'pointer',
-            transition: 'all 0.2s',
+            transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
           }}
-          title="Switch persona to test full approval lifecycle (Owner only)"
+          title="Switch test persona to verify approval workflow (Owner only)"
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontSize: '1.1rem' }}>🎭</span>
-            <div style={{ textAlign: 'left' }}>
-              <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#4338ca' }}>
-                Quick Persona Switcher
+            <span style={{ fontSize: '1.05rem' }}>🎭</span>
+            <div style={{ textAlign: 'left', lineHeight: 1.25 }}>
+              <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#3730a3' }}>
+                Test Personas
               </div>
-              <div style={{ fontSize: '0.68rem', color: '#6366f1' }}>
-                1-Click Test Personas (Owner Only)
+              <div style={{ fontSize: '0.66rem', color: '#6366f1', fontWeight: 500 }}>
+                1-Click Role Switcher
               </div>
             </div>
           </div>
-          <span style={{ fontSize: '0.75rem', color: '#6366f1' }}>⇄</span>
+          <span style={{ fontSize: '0.85rem', color: '#6366f1', fontWeight: 700 }}>⇄</span>
         </button>
       </div>
 

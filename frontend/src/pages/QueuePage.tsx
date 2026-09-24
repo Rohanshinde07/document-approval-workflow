@@ -195,7 +195,7 @@ export const QueuePage: React.FC = () => {
             {activeFilter === 'reviews' && 'Pending Reviews only'}
             {activeFilter === 'approvals' && 'Pending Approvals only'}
             {activeFilter === 'changes' && 'Documents Needing Revisions only'}
-            {activeFilter === 'mydocs' && 'My Authored Documents only'}
+            {activeFilter === 'mydocs' && 'My Documents only'}
             {activeFilter === 'projects' && 'Active Projects only'}
           </span>
           <button
@@ -280,14 +280,14 @@ export const QueuePage: React.FC = () => {
         </div>
       )}
 
-      {/* My Authored Documents */}
+      {/* My Documents */}
       {activeFilter !== 'reviews' && activeFilter !== 'approvals' && activeFilter !== 'changes' && activeFilter !== 'projects' && (
         <div className="card" ref={myDocsRef} style={{ marginTop: '1.5rem' }}>
           <div className="card-header">
             <div>
-              <h2 className="card-title">My Authored Documents</h2>
+              <h2 className="card-title">My Documents</h2>
               <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '0.2rem' }}>
-                All documents you authored and their live status in the sequential pipeline.
+                All documents across your workspace projects and their live status in the sequential pipeline.
               </p>
             </div>
             <span className="badge badge-in_review">
@@ -298,9 +298,9 @@ export const QueuePage: React.FC = () => {
           {myDocuments.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '2rem 1rem', color: 'var(--text-muted)' }}>
               <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>📝</div>
-              <div style={{ fontWeight: 600 }}>No Documents Authored Yet</div>
+              <div style={{ fontWeight: 600 }}>No Documents Found</div>
               <div style={{ fontSize: '0.85rem', color: 'var(--text-dim)', marginTop: '0.2rem' }}>
-                You haven't authored any documents yet. Open a project to create your first document.
+                No documents found in your projects yet. Open a project to create your first document.
               </div>
             </div>
           ) : (
@@ -310,6 +310,7 @@ export const QueuePage: React.FC = () => {
                   <tr>
                     <th>Document Title</th>
                     <th>Project</th>
+                    <th>Author</th>
                     <th>Version</th>
                     <th>Pipeline Status</th>
                     <th>Current Workflow Stage</th>
@@ -342,6 +343,7 @@ export const QueuePage: React.FC = () => {
                           </Link>
                         </td>
                         <td>{doc.project?.name}</td>
+                        <td style={{ fontSize: '0.875rem', fontWeight: 500 }}>{doc.author?.name || '—'}</td>
                         <td>
                           <strong>v{doc.currentVersion?.versionNumber || 1}</strong>
                         </td>

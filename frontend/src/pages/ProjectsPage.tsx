@@ -139,7 +139,7 @@ export const ProjectsPage: React.FC = () => {
                   className="form-input"
                   value={projectName}
                   onChange={(e) => setProjectName(e.target.value)}
-                  placeholder="e.g. Apollo Infrastructure Migration"
+                  placeholder="Enter project name"
                   required
                 />
               </div>

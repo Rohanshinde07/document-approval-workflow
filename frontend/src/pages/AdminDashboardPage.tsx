@@ -512,7 +512,7 @@ export const AdminDashboardPage: React.FC = () => {
                   className="form-input"
                   value={newProjectName}
                   onChange={(e) => setNewProjectName(e.target.value)}
-                  placeholder="e.g. Phoenix Infrastructure Migration"
+                  placeholder="Enter project name"
                   required
                 />
               </div>

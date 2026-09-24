@@ -109,23 +109,27 @@ a:hover {
   align-items: center;
   gap: 0.75rem;
   padding: 0.65rem 0.85rem;
-  border-radius: 8px;
+  border-radius: 9px;
   color: #475569;
   text-decoration: none;
   font-size: 0.875rem;
   font-weight: 600;
-  transition: all 0.15s ease;
+  transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid transparent;
 }
 
 .sidebar-link:hover {
-  background: #f1f5f9;
+  background: #f8fafc;
   color: #0f172a;
+  transform: translateX(2px);
 }
 
 .sidebar-link.active {
   background: #eff6ff;
   color: #2563eb;
   font-weight: 700;
+  border-color: rgba(37, 99, 235, 0.18);
+  box-shadow: 0 1px 3px rgba(37, 99, 235, 0.08);
 }
 
 .sidebar-icon {

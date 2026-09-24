@@ -380,7 +380,7 @@ export const InviteAcceptPage: React.FC = () => {
                           className="form-input"
                           value={name}
                           onChange={(e) => setName(e.target.value)}
-                          placeholder="e.g. Rohan Shinde"
+                          placeholder="Your Full Name"
                           required
                           autoFocus
                         />

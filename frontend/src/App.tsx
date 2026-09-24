@@ -11,6 +11,8 @@ import { AdminDashboardPage } from './pages/AdminDashboardPage.js';
 import { InviteAcceptPage } from './pages/InviteAcceptPage.js';
 import { AllDocumentsPage } from './pages/AllDocumentsPage.js';
 
+import { PersonaBanner } from './components/PersonaBanner.js';
+
 const ProtectedLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, loading } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
@@ -31,6 +33,7 @@ const ProtectedLayout: React.FC<{ children: React.ReactNode }> = ({ children }) 
     <div className="enterprise-layout" style={{ display: 'flex', minHeight: '100vh', background: '#f8fafc' }}>
       <Sidebar collapsed={collapsed} onToggleCollapse={() => setCollapsed(!collapsed)} />
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, overflowX: 'hidden' }}>
+        <PersonaBanner />
         <main className="main-content" style={{ flex: 1, padding: '2rem 2.5rem', maxWidth: '1440px', width: '100%', margin: '0 auto' }}>
           {children}
         </main>
@@ -56,6 +59,7 @@ const AdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   }
 
   const isAdmin =
+    user.role === 'ADMIN' ||
     user.email === 'admin@demo.com' ||
     user.email === 'rohanyshinde07@gmail.com' ||
     user.email.startsWith('admin@');
@@ -68,6 +72,7 @@ const AdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     <div className="enterprise-layout" style={{ display: 'flex', minHeight: '100vh', background: '#f8fafc' }}>
       <Sidebar collapsed={collapsed} onToggleCollapse={() => setCollapsed(!collapsed)} />
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, overflowX: 'hidden' }}>
+        <PersonaBanner />
         <main className="main-content" style={{ flex: 1, padding: '2rem 2.5rem', maxWidth: '1440px', width: '100%', margin: '0 auto' }}>
           {children}
         </main>

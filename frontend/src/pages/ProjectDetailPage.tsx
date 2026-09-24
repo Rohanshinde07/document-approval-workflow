@@ -635,7 +635,7 @@ export const ProjectDetailPage: React.FC = () => {
                   className="form-input"
                   value={newDocTitle}
                   onChange={(e) => setNewDocTitle(e.target.value)}
-                  placeholder="e.g. System Architecture Spec"
+                  placeholder="Document title"
                   required
                 />
               </div>
@@ -703,7 +703,7 @@ export const ProjectDetailPage: React.FC = () => {
                       <input
                         type="text"
                         className="form-input"
-                        placeholder="What should Gemini write? (e.g. Microservice SLA & failover contract, 99.9% uptime)"
+                        placeholder="Enter topic or instructions for Gemini to write..."
                         value={aiDraftPrompt}
                         onChange={(e) => setAiDraftPrompt(e.target.value)}
                         style={{ fontSize: '0.85rem' }}
@@ -935,7 +935,7 @@ export const ProjectDetailPage: React.FC = () => {
                   className="form-input"
                   value={editTitle}
                   onChange={(e) => setEditTitle(e.target.value)}
-                  placeholder="e.g. System Architecture Spec"
+                  placeholder="Document title"
                   required
                 />
               </div>

@@ -164,27 +164,27 @@ export const WorkflowGuideModal: React.FC<Props> = ({ isOpen, onClose }) => {
             <tr style={{ borderBottom: '1px solid #f1f5f9' }}>
               <td style={{ padding: '8px 12px' }}><span className="role-badge" style={{ background: '#7c3aed15', color: '#7c3aed' }}>OWNER</span></td>
               <td style={{ padding: '8px 12px' }}>Manage members, invite team, delete project, view all</td>
-              <td style={{ padding: '8px 12px' }}><code>rohanyshinde07@gmail.com</code></td>
+              <td style={{ padding: '8px 12px' }}><span style={{ color: '#4338ca', fontWeight: 600 }}>👑 Project Owner</span></td>
             </tr>
             <tr style={{ borderBottom: '1px solid #f1f5f9' }}>
               <td style={{ padding: '8px 12px' }}><span className="role-badge" style={{ background: '#2563eb15', color: '#2563eb' }}>AUTHOR</span></td>
               <td style={{ padding: '8px 12px' }}>Draft documents from templates, create versions, submit</td>
-              <td style={{ padding: '8px 12px' }}><code>rohantrueview07@gmail.com</code></td>
+              <td style={{ padding: '8px 12px' }}><span style={{ color: '#2563eb', fontWeight: 600 }}>✍️ Document Author</span></td>
             </tr>
             <tr style={{ borderBottom: '1px solid #f1f5f9' }}>
               <td style={{ padding: '8px 12px' }}><span className="role-badge" style={{ background: '#d9770615', color: '#d97706' }}>REVIEWER</span></td>
               <td style={{ padding: '8px 12px' }}>Stage 2 Technical Review, leave comments, request changes</td>
-              <td style={{ padding: '8px 12px' }}><code>rohanyshinde21@gmail.com</code></td>
+              <td style={{ padding: '8px 12px' }}><span style={{ color: '#d97706', fontWeight: 600 }}>🔍 Technical Reviewer</span></td>
             </tr>
             <tr style={{ borderBottom: '1px solid #f1f5f9' }}>
               <td style={{ padding: '8px 12px' }}><span className="role-badge" style={{ background: '#16a34a15', color: '#16a34a' }}>APPROVER</span></td>
               <td style={{ padding: '8px 12px' }}>Stage 3 Executive Sign-off, final approval, or rejection</td>
-              <td style={{ padding: '8px 12px' }}><code>rohanyogeshshinde0@gmail.com</code></td>
+              <td style={{ padding: '8px 12px' }}><span style={{ color: '#16a34a', fontWeight: 600 }}>🛡️ Executive Approver</span></td>
             </tr>
             <tr>
               <td style={{ padding: '8px 12px' }}><span className="role-badge" style={{ background: '#64748b15', color: '#64748b' }}>VIEWER</span></td>
               <td style={{ padding: '8px 12px' }}>Read-only access to approved documents and project audit log</td>
-              <td style={{ padding: '8px 12px' }}><code>k10xlegit@gmail.com</code></td>
+              <td style={{ padding: '8px 12px' }}><span style={{ color: '#64748b', fontWeight: 600 }}>👁️ Stakeholder Viewer</span></td>
             </tr>
           </tbody>
         </table>

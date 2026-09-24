@@ -1032,7 +1032,7 @@ export const DocumentDetailPage: React.FC = () => {
                   className="form-input"
                   value={vSummary}
                   onChange={(e) => setVSummary(e.target.value)}
-                  placeholder="e.g. Addressed payment terms in section 3"
+                  placeholder="Summarize changes made in this revision..."
                   required
                 />
               </div>
@@ -1191,7 +1191,7 @@ export const DocumentDetailPage: React.FC = () => {
                     decisionType === 'REQUEST_CHANGES'
                       ? 'Specify exactly what needs to be changed before you can approve...'
                       : decisionType === 'REJECT'
-                      ? 'Please specify why this document is being rejected (e.g. Budget constraints, initiative cancelled)...'
+                      ? 'Please specify why this document is being rejected...'
                       : 'Add any optional sign-off remarks or guidance...'
                   }
                   rows={4}
@@ -1259,7 +1259,7 @@ export const DocumentDetailPage: React.FC = () => {
                   className="form-input"
                   value={editDocTitle}
                   onChange={(e) => setEditDocTitle(e.target.value)}
-                  placeholder="e.g. System Architecture Spec"
+                  placeholder="Document title"
                   required
                 />
               </div>
