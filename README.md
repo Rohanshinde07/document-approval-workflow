@@ -19,6 +19,21 @@ A full-stack, enterprise-grade Document Revision & Approval Workflow engine buil
    - A PostgreSQL database trigger (`prevent_audit_log_tampering`) rejects `UPDATE` and `DELETE` operations on `audit_events` at the database level.
 4. **Race-Condition & Concurrency Protection**:
    - Workflow operations execute inside `prisma.$transaction` with row locking (`SELECT ... FOR UPDATE`), preventing concurrent double-advancement or split-brain transitions.
+5. **✨ Google Gemini AI Compliance Verification**:
+   - Integrated with Google Gemini Flash for automated compliance & risk audits on draft specifications.
+   - Evaluates technical specs against industry guidelines, flags ambiguities, and suggests actionable reviewer recommendations with 1-click apply.
+6. **📬 Automated Email Notifications (SMTP / Nodemailer)**:
+   - Asynchronous, non-blocking notification engine for end-to-end workflow updates:
+     - **On Submit:** Dispatches review requests with deep links to all designated technical reviewers.
+     - **On Feedback:** Notifies authors immediately when changes are requested or comments added.
+     - **On Stage Advance:** Alerts executive approvers when Stage 2 unanimous review passes.
+     - **On Final Sign-off:** Dispatches sealed completion notices to project stakeholders.
+     - **SLA Nudge:** One-click escalation reminders to pending reviewers approaching deadline.
+7. **🛡️ Enterprise Governance Suite**:
+   - **1-Click Sealed Audit Certificate:** Generates official compliance reports with cryptographic SHA-256 checksums, 4-Eyes sign-off timestamps, and native PDF/print export.
+   - **Side-by-Side Visual Diff Viewer:** Compares document revisions side-by-side or unified with color-coded additions (`+`) and deletions (`-`).
+   - **Review SLA Countdown Timers:** Dynamic 48h (Review) and 24h (Approval) deadline chips with visual overdue alerts.
+   - **Multi-Format Document Import:** Drag-and-drop support for `.md`, `.txt`, `.docx`, and `.pdf` text extraction.
 
 ---
 
@@ -26,10 +41,12 @@ A full-stack, enterprise-grade Document Revision & Approval Workflow engine buil
 
 - **Runtime**: Node.js 22, TypeScript (`strict`)
 - **Backend Framework**: Express 5
-- **Validation**: Zod
-- **ORM & Database**: Prisma 6, PostgreSQL 16
+- **ORM & Database**: Prisma 6, PostgreSQL 16 (with SQLite dual-engine support for dev)
+- **Validation**: Zod schema validation
 - **Authentication**: JWT Bearer Tokens (8h validity) & `bcryptjs`
-- **Frontend**: React, Vite, TypeScript, React Router, custom CSS
+- **AI Engine**: Google Gemini Flash API (`@google/genai`)
+- **Email Notifications**: Nodemailer with SMTP transport
+- **Frontend**: React 18, Vite, TypeScript, React Router 6, Vanilla CSS design system
 - **Testing**: Vitest + Supertest against real PostgreSQL
 - **Containerization**: Docker Compose (multi-stage Dockerfile)
 
