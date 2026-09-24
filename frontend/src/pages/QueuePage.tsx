@@ -8,14 +8,15 @@ import { useAuth } from '../context/AuthContext.js';
 export const QueuePage: React.FC = () => {
   const { user } = useAuth();
   const [queue, setQueue] = useState<UserQueue | null>(null);
-  const [projectsCount, setProjectsCount] = useState<number>(0);
+  const [projects, setProjects] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [activeFilter, setActiveFilter] = useState<'all' | 'reviews' | 'approvals' | 'changes' | 'mydocs'>('all');
+  const [activeFilter, setActiveFilter] = useState<'all' | 'reviews' | 'approvals' | 'changes' | 'mydocs' | 'projects'>('all');
 
   const reviewsRef = useRef<HTMLDivElement>(null);
   const changesRef = useRef<HTMLDivElement>(null);
   const myDocsRef = useRef<HTMLDivElement>(null);
+  const projectsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     Promise.all([
@@ -24,7 +25,7 @@ export const QueuePage: React.FC = () => {
     ])
       .then(([queueData, projectsData]) => {
         setQueue(queueData);
-        setProjectsCount(projectsData.length);
+        setProjects(projectsData || []);
       })
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
@@ -38,7 +39,7 @@ export const QueuePage: React.FC = () => {
   const needingChanges = queue?.needingChanges || [];
   const myDocuments = queue?.myDocuments || [];
 
-  const handleMetricCardClick = (filter: 'reviews' | 'approvals' | 'changes' | 'mydocs' | 'all') => {
+  const handleMetricCardClick = (filter: 'reviews' | 'approvals' | 'changes' | 'mydocs' | 'projects') => {
     setActiveFilter(filter);
     // Scroll to the relevant section
     setTimeout(() => {
@@ -48,6 +49,8 @@ export const QueuePage: React.FC = () => {
         changesRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
       } else if (filter === 'mydocs' && myDocsRef.current) {
         myDocsRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } else if (filter === 'projects' && projectsRef.current) {
+        projectsRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
     }, 100);
   };
@@ -151,17 +154,28 @@ export const QueuePage: React.FC = () => {
 
         <div
           id="metric-projects"
-          className={`metric-card metric-card-clickable ${activeFilter === 'all' ? 'metric-card-active' : ''}`}
-          onClick={() => handleMetricCardClick('all')}
+          className={`metric-card metric-card-clickable ${activeFilter === 'projects' ? 'metric-card-active' : ''}`}
+          onClick={() => handleMetricCardClick('projects')}
           role="button"
           tabIndex={0}
-          onKeyDown={(e) => e.key === 'Enter' && handleMetricCardClick('all')}
-          title="Click to view all items"
+          onKeyDown={(e) => e.key === 'Enter' && handleMetricCardClick('projects')}
+          title="Click to view active projects"
         >
           <div>
             <div className="metric-title">Active Projects</div>
-            <div className="metric-value">{projectsCount}</div>
-            <div className="metric-action-hint">Show all →</div>
+            <div className="metric-value">{projects.length}</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.2rem' }}>
+              <span className="metric-action-hint">View list ↓</span>
+              <span style={{ color: 'var(--text-dim)', fontSize: '0.75rem' }}>•</span>
+              <Link
+                to="/projects"
+                onClick={(e) => e.stopPropagation()}
+                style={{ fontSize: '0.75rem', color: 'var(--accent-blue)', fontWeight: 600, textDecoration: 'none' }}
+                title="Go to full Projects Hub"
+              >
+                Hub →
+              </Link>
+            </div>
           </div>
           <div className="metric-icon" style={{ background: 'rgba(59, 130, 246, 0.15)', color: '#60a5fa' }}>
             📂
@@ -189,6 +203,7 @@ export const QueuePage: React.FC = () => {
             {activeFilter === 'approvals' && 'Pending Approvals only'}
             {activeFilter === 'changes' && 'Documents Needing Revisions only'}
             {activeFilter === 'mydocs' && 'My Authored Documents only'}
+            {activeFilter === 'projects' && 'Active Projects only'}
           </span>
           <button
             onClick={() => setActiveFilter('all')}
@@ -207,7 +222,7 @@ export const QueuePage: React.FC = () => {
       )}
 
       {/* Awaiting My Decision */}
-      {activeFilter !== 'changes' && activeFilter !== 'mydocs' && (
+      {activeFilter !== 'changes' && activeFilter !== 'mydocs' && activeFilter !== 'projects' && (
         <div className="card" ref={reviewsRef}>
           <div className="card-header">
             <h2 className="card-title">
@@ -273,7 +288,7 @@ export const QueuePage: React.FC = () => {
       )}
 
       {/* My Authored Documents */}
-      {activeFilter !== 'reviews' && activeFilter !== 'approvals' && activeFilter !== 'changes' && (
+      {activeFilter !== 'reviews' && activeFilter !== 'approvals' && activeFilter !== 'changes' && activeFilter !== 'projects' && (
         <div className="card" ref={myDocsRef} style={{ marginTop: '1.5rem' }}>
           <div className="card-header">
             <div>
@@ -359,8 +374,8 @@ export const QueuePage: React.FC = () => {
       )}
 
       {/* Needing Changes */}
-      {activeFilter !== 'reviews' && activeFilter !== 'approvals' && (
-        <div className="card" ref={changesRef}>
+      {activeFilter !== 'reviews' && activeFilter !== 'approvals' && activeFilter !== 'mydocs' && activeFilter !== 'projects' && (
+        <div className="card" ref={changesRef} style={{ marginTop: '1.5rem' }}>
           <div className="card-header">
             <h2 className="card-title">My Documents Needing Revisions</h2>
             <span className="badge badge-changes_requested">
@@ -412,6 +427,115 @@ export const QueuePage: React.FC = () => {
                   ))}
                 </tbody>
               </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Active Workspaces & Projects */}
+      {activeFilter !== 'reviews' && activeFilter !== 'approvals' && activeFilter !== 'changes' && activeFilter !== 'mydocs' && (
+        <div className="card" ref={projectsRef} style={{ marginTop: '1.5rem' }}>
+          <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+            <div>
+              <h2 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                📂 Active Workspaces & Projects
+              </h2>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '0.2rem' }}>
+                All projects where you are assigned as Owner, Author, Reviewer, or Approver.
+              </p>
+            </div>
+            <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+              <span className="badge badge-in_review">
+                {projects.length} {projects.length === 1 ? 'Project' : 'Projects'}
+              </span>
+              <Link to="/projects" className="btn btn-secondary btn-sm" style={{ textDecoration: 'none' }}>
+                Open Projects Hub →
+              </Link>
+            </div>
+          </div>
+
+          {projects.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '2.5rem 1rem', color: 'var(--text-muted)' }}>
+              <div style={{ fontSize: '2.5rem', marginBottom: '0.5rem' }}>📁</div>
+              <div style={{ fontWeight: 600, fontSize: '1rem', color: 'var(--text-main)' }}>No Active Projects Found</div>
+              <div style={{ fontSize: '0.85rem', color: 'var(--text-dim)', marginTop: '0.2rem', marginBottom: '1rem' }}>
+                You have not joined or created any projects yet.
+              </div>
+              <Link to="/projects" className="btn btn-primary btn-sm">
+                + Create / Join Project
+              </Link>
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(290px, 1fr))', gap: '1rem', paddingTop: '0.5rem' }}>
+              {projects.map((proj) => (
+                <div
+                  key={proj.id}
+                  className="project-summary-card"
+                  style={{
+                    background: '#ffffff',
+                    border: '1px solid var(--border-color)',
+                    borderRadius: 'var(--radius-md)',
+                    padding: '1.25rem',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+                    transition: 'all 0.2s ease',
+                  }}
+                >
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem', gap: '0.5rem' }}>
+                      <Link
+                        to={`/projects/${proj.id}`}
+                        style={{
+                          fontWeight: 700,
+                          fontSize: '1.05rem',
+                          color: 'var(--text-main)',
+                          textDecoration: 'none',
+                        }}
+                      >
+                        {proj.name}
+                      </Link>
+                      <span className="role-badge" style={{ fontSize: '0.72rem', flexShrink: 0 }}>
+                        {proj.role}
+                      </span>
+                    </div>
+                    <p
+                      style={{
+                        fontSize: '0.85rem',
+                        color: 'var(--text-muted)',
+                        marginBottom: '1rem',
+                        lineHeight: 1.4,
+                        minHeight: '2.2rem',
+                      }}
+                    >
+                      {proj.description || 'No description provided.'}
+                    </p>
+                  </div>
+
+                  <div
+                    style={{
+                      borderTop: '1px solid #f1f5f9',
+                      paddingTop: '0.85rem',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <div style={{ fontSize: '0.8rem', color: 'var(--text-dim)', display: 'flex', gap: '0.75rem' }}>
+                      <span>📄 {proj.documentCount || 0} docs</span>
+                      <span>👥 {proj.memberCount || 0} members</span>
+                    </div>
+                    <Link
+                      to={`/projects/${proj.id}`}
+                      className="btn btn-secondary btn-sm"
+                      style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem', textDecoration: 'none' }}
+                    >
+                      Open Workspace →
+                    </Link>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </div>
