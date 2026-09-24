@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext.js';
-import { Navbar } from './components/Navbar.js';
+import { Sidebar } from './components/Sidebar.js';
 import { LoginPage } from './pages/LoginPage.js';
 import { QueuePage } from './pages/QueuePage.js';
 import { ProjectsPage } from './pages/ProjectsPage.js';
@@ -9,9 +9,11 @@ import { ProjectDetailPage } from './pages/ProjectDetailPage.js';
 import { DocumentDetailPage } from './pages/DocumentDetailPage.js';
 import { AdminDashboardPage } from './pages/AdminDashboardPage.js';
 import { InviteAcceptPage } from './pages/InviteAcceptPage.js';
+import { AllDocumentsPage } from './pages/AllDocumentsPage.js';
 
 const ProtectedLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, loading } = useAuth();
+  const [collapsed, setCollapsed] = useState(false);
 
   if (loading) {
     return (
@@ -26,15 +28,20 @@ const ProtectedLayout: React.FC<{ children: React.ReactNode }> = ({ children }) 
   }
 
   return (
-    <div className="app-container">
-      <Navbar />
-      <main className="main-content">{children}</main>
+    <div className="enterprise-layout" style={{ display: 'flex', minHeight: '100vh', background: '#f8fafc' }}>
+      <Sidebar collapsed={collapsed} onToggleCollapse={() => setCollapsed(!collapsed)} />
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, overflowX: 'hidden' }}>
+        <main className="main-content" style={{ flex: 1, padding: '2rem 2.5rem', maxWidth: '1440px', width: '100%', margin: '0 auto' }}>
+          {children}
+        </main>
+      </div>
     </div>
   );
 };
 
 const AdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, loading } = useAuth();
+  const [collapsed, setCollapsed] = useState(false);
 
   if (loading) {
     return (
@@ -58,9 +65,13 @@ const AdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   }
 
   return (
-    <div className="app-container">
-      <Navbar />
-      <main className="main-content">{children}</main>
+    <div className="enterprise-layout" style={{ display: 'flex', minHeight: '100vh', background: '#f8fafc' }}>
+      <Sidebar collapsed={collapsed} onToggleCollapse={() => setCollapsed(!collapsed)} />
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, overflowX: 'hidden' }}>
+        <main className="main-content" style={{ flex: 1, padding: '2rem 2.5rem', maxWidth: '1440px', width: '100%', margin: '0 auto' }}>
+          {children}
+        </main>
+      </div>
     </div>
   );
 };
@@ -92,6 +103,14 @@ export const App: React.FC = () => {
             element={
               <ProtectedLayout>
                 <ProjectDetailPage />
+              </ProtectedLayout>
+            }
+          />
+          <Route
+            path="/documents"
+            element={
+              <ProtectedLayout>
+                <AllDocumentsPage />
               </ProtectedLayout>
             }
           />

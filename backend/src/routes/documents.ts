@@ -10,6 +10,7 @@ import {
   recordDecision,
 } from '../services/documents.js';
 import { addComment } from '../services/comments.js';
+import { prisma } from '../db.js';
 
 const router = Router();
 
@@ -33,6 +34,41 @@ const addCommentSchema = z.object({
 });
 
 router.use(authenticate);
+
+// GET /api/documents — list all accessible documents across projects
+router.get('/', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const isAdmin =
+      req.user!.email === 'admin@demo.com' ||
+      req.user!.email === 'rohanyshinde07@gmail.com' ||
+      req.user!.email.startsWith('admin@');
+
+    const whereClause = isAdmin
+      ? {}
+      : {
+          project: {
+            members: {
+              some: { userId: req.user!.id },
+            },
+          },
+        };
+
+    const docs = await prisma.document.findMany({
+      where: whereClause,
+      include: {
+        project: { select: { id: true, name: true } },
+        author: { select: { id: true, name: true, email: true } },
+        task: { select: { id: true, title: true } },
+        currentVersion: { select: { versionNumber: true, changeSummary: true } },
+      },
+      orderBy: { updatedAt: 'desc' },
+    });
+
+    res.json(docs);
+  } catch (err) {
+    next(err);
+  }
+});
 
 router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
   try {

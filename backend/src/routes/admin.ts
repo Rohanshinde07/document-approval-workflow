@@ -1,8 +1,10 @@
+import jwt from 'jsonwebtoken';
 import { Router, Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import { authenticate } from '../middleware/auth.js';
-import { ForbiddenError } from '../domain/errors.js';
+import { ForbiddenError, NotFoundError } from '../domain/errors.js';
 import { prisma } from '../db.js';
+import { config } from '../config.js';
 
 const router = Router();
 
@@ -177,6 +179,34 @@ router.post('/projects', async (req: Request, res: Response, next: NextFunction)
       },
     });
     res.status(201).json(project);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /api/admin/impersonate — switch to any persona for demo testing (admin only)
+router.post('/impersonate', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { email } = z.object({ email: z.string().email() }).parse(req.body);
+    const targetUser = await prisma.user.findUnique({
+      where: { email: email.toLowerCase().trim() },
+    });
+    if (!targetUser) {
+      throw new NotFoundError('Target persona user not found');
+    }
+    const token = jwt.sign(
+      { id: targetUser.id, email: targetUser.email, name: targetUser.name },
+      config.jwtSecret,
+      { expiresIn: '8h' }
+    );
+    res.json({
+      token,
+      user: {
+        id: targetUser.id,
+        email: targetUser.email,
+        name: targetUser.name,
+      },
+    });
   } catch (err) {
     next(err);
   }

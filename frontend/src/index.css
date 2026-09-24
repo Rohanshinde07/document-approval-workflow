@@ -79,6 +79,12 @@ a:hover {
 }
 
 /* Layout */
+.enterprise-layout {
+  display: flex;
+  min-height: 100vh;
+  background: #f8fafc;
+}
+
 .app-container {
   min-height: 100vh;
   display: flex;
@@ -87,10 +93,68 @@ a:hover {
 
 .main-content {
   flex: 1;
-  max-width: 1280px;
+  max-width: 1440px;
   width: 100%;
   margin: 0 auto;
-  padding: 2.25rem 1.5rem;
+  padding: 2rem 2.5rem;
+}
+
+/* Sidebar Navigation */
+.app-sidebar {
+  box-shadow: 1px 0 0 rgba(0, 0, 0, 0.05);
+}
+
+.sidebar-link {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: 8px;
+  color: #475569;
+  text-decoration: none;
+  font-size: 0.875rem;
+  font-weight: 600;
+  transition: all 0.15s ease;
+}
+
+.sidebar-link:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.sidebar-link.active {
+  background: #eff6ff;
+  color: #2563eb;
+  font-weight: 700;
+}
+
+.sidebar-icon {
+  font-size: 1.15rem;
+  width: 24px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.sidebar-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.app-sidebar.collapsed .sidebar-link {
+  justify-content: center;
+  padding: 0.65rem 0;
+}
+
+@media (max-width: 768px) {
+  .enterprise-layout {
+    flex-direction: column;
+  }
+  .app-sidebar {
+    position: static !important;
+    width: 100% !important;
+    height: auto !important;
+  }
 }
 
 /* Navbar */
