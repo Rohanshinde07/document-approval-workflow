@@ -4,6 +4,8 @@ import { DocumentDetail, DocumentVersion, AuditEvent, DecisionType } from '../ty
 import { apiRequest } from '../api/client.js';
 import { StatusBadge } from '../components/StatusBadge.js';
 import { useAuth } from '../context/AuthContext.js';
+import { AIAuditModal } from '../components/AIAuditModal.js';
+import { FileImportDropzone } from '../components/FileImportDropzone.js';
 
 export const DocumentDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -33,6 +35,7 @@ export const DocumentDetailPage: React.FC = () => {
   const [commentBody, setCommentBody] = useState('');
   const [commentSubmitting, setCommentSubmitting] = useState(false);
   const [submittingAction, setSubmittingAction] = useState(false);
+  const [showAiModal, setShowAiModal] = useState(false);
 
   const loadData = () => {
     if (!id) return;
@@ -511,6 +514,28 @@ export const DocumentDetailPage: React.FC = () => {
 
           {/* Contextual Action Buttons */}
           <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
+            {/* ✨ Gemini AI Verification Button */}
+            <button
+              type="button"
+              onClick={() => setShowAiModal(true)}
+              className="btn btn-sm"
+              style={{
+                background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
+                color: 'white',
+                border: 'none',
+                fontWeight: 700,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.45rem',
+                boxShadow: '0 2px 8px rgba(99, 102, 241, 0.25)',
+                padding: '0.45rem 0.95rem',
+              }}
+              title="Run automated compliance & risk audit with Google Gemini 3.6 Flash"
+            >
+              <span>✨</span>
+              <span>Verify with AI</span>
+            </button>
+
             <button onClick={handleCopyContent} className="btn btn-secondary btn-sm" title="Copy raw Markdown content">
               {copied ? '✓ Copied' : '📋 Copy Content'}
             </button>
@@ -883,6 +908,20 @@ export const DocumentDetailPage: React.FC = () => {
             </div>
 
             <form onSubmit={handleCreateVersion}>
+              {/* 📁 Upload revised file (.pdf, .docx, .txt, .md) */}
+              <div style={{ marginBottom: '1.25rem' }}>
+                <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.4rem' }}>
+                  <span>📁</span>
+                  <span>Upload Revised Specification File (Optional)</span>
+                </label>
+                <FileImportDropzone
+                  onFileLoaded={({ content, suggestedTitle }) => {
+                    setVContent(content);
+                    if (!vSummary) setVSummary(`Updated from ${suggestedTitle}`);
+                  }}
+                />
+              </div>
+
               <div className="form-group">
                 <label className="form-label">Version Content (Markdown)</label>
                 <textarea
@@ -1094,6 +1133,19 @@ export const DocumentDetailPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* ✨ Google Gemini AI Verification Modal */}
+      <AIAuditModal
+        documentId={document.id}
+        documentTitle={document.title}
+        isOpen={showAiModal}
+        onClose={() => setShowAiModal(false)}
+        onApplyRecommendation={(note) => {
+          setDecisionComment(note);
+          setShowDecisionModal(true);
+        }}
+      />
     </div>
   );
 };
+

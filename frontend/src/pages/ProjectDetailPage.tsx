@@ -4,6 +4,7 @@ import { ProjectMember, Task, ProjectRole } from '../types.js';
 import { apiRequest } from '../api/client.js';
 import { StatusBadge } from '../components/StatusBadge.js';
 import { DOCUMENT_TEMPLATES, DocumentTemplate } from '../data/templates.js';
+import { FileImportDropzone } from '../components/FileImportDropzone.js';
 
 interface ProjectDetail {
   id: string;
@@ -32,6 +33,11 @@ export const ProjectDetailPage: React.FC = () => {
   const [newDocSummary, setNewDocSummary] = useState('');
   const [docSubmitting, setDocSubmitting] = useState(false);
 
+  // Gemini AI Draft Generator
+  const [generatingAI, setGeneratingAI] = useState(false);
+  const [showAiDraftBox, setShowAiDraftBox] = useState(false);
+  const [aiDraftPrompt, setAiDraftPrompt] = useState('');
+
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState<ProjectRole>('REVIEWER');
@@ -40,6 +46,32 @@ export const ProjectDetailPage: React.FC = () => {
   const [lastInviteUrl, setLastInviteUrl] = useState('');
 
   const [actionError, setActionError] = useState('');
+
+  const handleGenerateAiDraft = async () => {
+    const promptToUse = aiDraftPrompt.trim() || newDocTitle.trim();
+    if (!promptToUse) {
+      alert('Please enter a brief topic or prompt for Gemini to write.');
+      return;
+    }
+    setGeneratingAI(true);
+    try {
+      const res = await apiRequest<{ content: string }>('/api/ai/generate-draft', {
+        method: 'POST',
+        body: JSON.stringify({ prompt: promptToUse, currentContent: newDocContent }),
+      });
+      if (res.content) {
+        setNewDocContent(res.content);
+        if (!newDocTitle) {
+          setNewDocTitle(promptToUse);
+        }
+        setShowAiDraftBox(false);
+      }
+    } catch (err: any) {
+      alert(`AI generation failed: ${err.message}`);
+    } finally {
+      setGeneratingAI(false);
+    }
+  };
 
   const loadData = () => {
     if (!id) return;
@@ -452,6 +484,22 @@ export const ProjectDetailPage: React.FC = () => {
             </div>
 
             <form onSubmit={handleCreateDocument}>
+              {/* 📁 PDF, DOCX, TXT, MD File Importer */}
+              <div style={{ marginBottom: '1.25rem' }}>
+                <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.4rem' }}>
+                  <span>📁</span>
+                  <span>Import Existing Specification File (Optional)</span>
+                </label>
+                <FileImportDropzone
+                  onFileLoaded={({ content, suggestedTitle }) => {
+                    setNewDocContent(content);
+                    if (!newDocTitle) {
+                      setNewDocTitle(suggestedTitle);
+                    }
+                  }}
+                />
+              </div>
+
               <div className="form-group">
                 <label className="form-label">Document Title</label>
                 <input
@@ -483,7 +531,68 @@ export const ProjectDetailPage: React.FC = () => {
               )}
 
               <div className="form-group">
-                <label className="form-label">Initial Version Content (Markdown supported)</label>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+                  <label className="form-label" style={{ margin: 0 }}>
+                    Initial Version Content (Markdown supported)
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowAiDraftBox(!showAiDraftBox)}
+                    className="btn btn-secondary btn-sm"
+                    style={{
+                      background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(168, 85, 247, 0.1) 100%)',
+                      borderColor: '#818cf8',
+                      color: '#4338ca',
+                      fontWeight: 700,
+                      fontSize: '0.75rem',
+                      padding: '3px 9px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '5px',
+                    }}
+                    title="Generate specification draft with Google Gemini 3.6 Flash"
+                  >
+                    <span>✨</span>
+                    <span>{showAiDraftBox ? 'Hide AI Draft Box' : 'Draft with Gemini AI'}</span>
+                  </button>
+                </div>
+
+                {/* Gemini AI Prompt Copilot Box */}
+                {showAiDraftBox && (
+                  <div
+                    style={{
+                      background: '#f8fafc',
+                      border: '1px solid #c7d2fe',
+                      borderRadius: '8px',
+                      padding: '0.85rem 1rem',
+                      marginBottom: '0.75rem',
+                    }}
+                  >
+                    <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#3730a3', marginBottom: '0.35rem' }}>
+                      ✨ Google Gemini 3.6 Flash Specification Writer
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <input
+                        type="text"
+                        className="form-input"
+                        placeholder="What should Gemini write? (e.g. Microservice SLA & failover contract, 99.9% uptime)"
+                        value={aiDraftPrompt}
+                        onChange={(e) => setAiDraftPrompt(e.target.value)}
+                        style={{ fontSize: '0.85rem' }}
+                      />
+                      <button
+                        type="button"
+                        onClick={handleGenerateAiDraft}
+                        disabled={generatingAI}
+                        className="btn btn-primary btn-sm"
+                        style={{ background: '#4f46e5', flexShrink: 0, fontWeight: 700 }}
+                      >
+                        {generatingAI ? 'Writing...' : 'Generate →'}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 <textarea
                   className="form-textarea"
                   value={newDocContent}

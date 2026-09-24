@@ -8,6 +8,7 @@ import commentRoutes from './routes/comments.js';
 import meRoutes from './routes/me.js';
 import adminRoutes from './routes/admin.js';
 import inviteRoutes from './routes/invites.js';
+import aiRoutes from './routes/ai.js';
 import { errorHandler } from './middleware/errorHandler.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -31,6 +32,7 @@ export function createApp() {
   app.use('/api/me', meRoutes);
   app.use('/api/admin', adminRoutes);
   app.use('/api/invites', inviteRoutes);
+  app.use('/api/ai', aiRoutes);
 
   // Serve static frontend files when built in production
   const frontendDistPath = path.resolve(__dirname, '../../frontend/dist');
