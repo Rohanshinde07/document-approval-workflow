@@ -72,16 +72,16 @@ On startup, migrations will automatically apply and the seed script will populat
 
 All demo users share the password: **`password123`**
 
-| User Name | Email | Project Role (Apollo) | Project Role (Nova) |
+| User Name | Email | Role (Core Platform) | Role (Customer Portal) |
 |---|---|---|---|
 | **System Administrator** | `admin@demo.com` | `SYSTEM_ADMIN` (Global Console) | `SYSTEM_ADMIN` |
-| **Alice Smith** | `alice@demo.com` | `OWNER` | — |
+| **Alice Smith** | `alice@demo.com` | `OWNER` | `OWNER` |
 | **Bob Jones** | `bob@demo.com` | `AUTHOR` | `REVIEWER` |
 | **Carol Danvers** | `carol@demo.com` | `REVIEWER` | `APPROVER` |
 | **Dave Miller** | `dave@demo.com` | `REVIEWER` | `AUTHOR` |
 | **Erin Wright** | `erin@demo.com` | `APPROVER` | — |
-| **Frank Castle** | `frank@demo.com` | `VIEWER` | — |
-| **Grace Hopper** | `grace@demo.com` | — | `OWNER` |
+| **Frank Castle** | `frank@demo.com` | `VIEWER` | `VIEWER` |
+| **Grace Hopper** | `grace@demo.com` | — | `OWNER` (Cloud Infra) |
 
 > 💡 **Quick Testing Tips:**
 > - **On Login Page:** Click any of the **`⚡ Quick Fill Demo Account`** buttons (Alice, Bob, Carol, Erin, Admin) to instantly auto-fill credentials and sign in.

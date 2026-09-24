@@ -15,11 +15,43 @@ interface Persona {
 const DEMO_PERSONAS: Persona[] = [
   {
     role: 'OWNER',
-    name: 'Project Owner',
-    email: 'rohanyshinde07@gmail.com',
+    name: 'Alice Smith',
+    email: 'alice@demo.com',
     badgeColor: '#7c3aed',
     icon: '👑',
     description: 'Project Owner: Create projects, manage team, send invites & supervise workflow',
+  },
+  {
+    role: 'AUTHOR',
+    name: 'Bob Jones',
+    email: 'bob@demo.com',
+    badgeColor: '#2563eb',
+    icon: '✍️',
+    description: 'Document Author: Drafts specs with templates, creates versions & submits for review',
+  },
+  {
+    role: 'REVIEWER',
+    name: 'Carol Danvers',
+    email: 'carol@demo.com',
+    badgeColor: '#d97706',
+    icon: '🔍',
+    description: 'Technical Reviewer: Stage 2 Review, inline feedback, approve or request changes',
+  },
+  {
+    role: 'APPROVER',
+    name: 'Erin Wright',
+    email: 'erin@demo.com',
+    badgeColor: '#16a34a',
+    icon: '🛡️',
+    description: 'Executive Approver: Stage 3 Final sign-off or executive rejection with note',
+  },
+  {
+    role: 'VIEWER',
+    name: 'Frank Castle',
+    email: 'frank@demo.com',
+    badgeColor: '#64748b',
+    icon: '👁️',
+    description: 'Stakeholder Viewer: Read-only access to published documents & immutable audit logs',
   },
   {
     role: 'ADMIN',
@@ -28,38 +60,6 @@ const DEMO_PERSONAS: Persona[] = [
     badgeColor: '#4338ca',
     icon: '⚙️',
     description: 'System Admin: Global audit logs, metrics, compliance monitoring & system control',
-  },
-  {
-    role: 'AUTHOR',
-    name: 'Document Author',
-    email: 'rohantrueview07@gmail.com',
-    badgeColor: '#2563eb',
-    icon: '✍️',
-    description: 'Document Author: Drafts specs with templates, creates versions & submits for review',
-  },
-  {
-    role: 'REVIEWER',
-    name: 'Technical Reviewer',
-    email: 'rohanyshinde21@gmail.com',
-    badgeColor: '#d97706',
-    icon: '🔍',
-    description: 'Technical Reviewer: Stage 2 Review, inline feedback, approve or request changes',
-  },
-  {
-    role: 'APPROVER',
-    name: 'Executive Approver',
-    email: 'rohanyogeshshinde0@gmail.com',
-    badgeColor: '#16a34a',
-    icon: '🛡️',
-    description: 'Executive Approver: Stage 3 Final sign-off or executive rejection with note',
-  },
-  {
-    role: 'VIEWER',
-    name: 'Stakeholder Viewer',
-    email: 'k10xlegit@gmail.com',
-    badgeColor: '#64748b',
-    icon: '👁️',
-    description: 'Stakeholder Viewer: Read-only access to published documents & immutable audit logs',
   },
 ];
 
@@ -72,8 +72,8 @@ export const PersonaSwitcher: React.FC = () => {
 
   const originalAdminToken = sessionStorage.getItem('demo_original_admin');
   const isOwnerOrAdmin =
+    user.email === 'alice@demo.com' ||
     user.email === 'admin@demo.com' ||
-    user.email === 'rohanyshinde07@gmail.com' ||
     user.role === 'ADMIN' ||
     user.email.startsWith('admin@');
 

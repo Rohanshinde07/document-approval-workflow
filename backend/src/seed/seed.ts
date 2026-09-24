@@ -23,10 +23,10 @@ export async function runSeed(force = false) {
   await prisma.project.deleteMany();
   await prisma.user.deleteMany();
 
-  console.log('Seeding demo database...');
+  console.log('Seeding demo database with 4 mock test projects...');
   const passwordHash = await bcrypt.hash('password123', 10);
 
-  // 1. Create Users
+  // 1. Create Standard Demo Users (No personal emails for privacy)
   const admin = await prisma.user.create({
     data: { name: 'System Administrator', email: 'admin@demo.com', passwordHash },
   });
@@ -52,34 +52,18 @@ export async function runSeed(force = false) {
     data: { name: 'Grace Hopper', email: 'grace@demo.com', passwordHash },
   });
 
-  // Demo Persona Accounts (Quick Switcher)
-  const ownerUser = await prisma.user.create({
-    data: { name: 'Project Owner', email: 'rohanyshinde07@gmail.com', passwordHash },
-  });
-  const authorUser = await prisma.user.create({
-    data: { name: 'Document Author', email: 'rohantrueview07@gmail.com', passwordHash },
-  });
-  const reviewerUser = await prisma.user.create({
-    data: { name: 'Technical Reviewer', email: 'rohanyshinde21@gmail.com', passwordHash },
-  });
-  const approverUser = await prisma.user.create({
-    data: { name: 'Executive Approver', email: 'rohanyogeshshinde0@gmail.com', passwordHash },
-  });
-  const viewerUser = await prisma.user.create({
-    data: { name: 'Stakeholder Viewer', email: 'k10xlegit@gmail.com', passwordHash },
-  });
-
-  // 2. Create Project "Apollo Website Redesign"
-  const apollo = await prisma.project.create({
+  // =========================================================================
+  // Project 1: Test Project - Core Platform Services
+  // =========================================================================
+  const proj1 = await prisma.project.create({
     data: {
-      name: 'Apollo Website Redesign',
-      description: 'Redesign of the company corporate website and customer portal.',
-      createdById: admin.id,
+      name: 'Test Project - Core Platform Services',
+      description: 'Enterprise backend microservices, unified API gateway, and shared authentication infrastructure.',
+      createdById: alice.id,
       members: {
         create: [
           { userId: admin.id, role: 'OWNER' },
           { userId: alice.id, role: 'OWNER' },
-          { userId: ownerUser.id, role: 'OWNER' },
           { userId: bob.id, role: 'AUTHOR' },
           { userId: carol.id, role: 'REVIEWER' },
           { userId: dave.id, role: 'REVIEWER' },
@@ -90,167 +74,261 @@ export async function runSeed(force = false) {
     },
   });
 
-  // Tasks for Apollo
-  const taskWireframes = await prisma.task.create({
+  const taskArch = await prisma.task.create({
     data: {
-      projectId: apollo.id,
-      title: 'Homepage wireframes',
-      description: 'UX and layout mocks for homepage',
+      projectId: proj1.id,
+      title: 'Platform Architecture & Schemas',
+      description: 'Core domain modeling and data flow diagrams',
     },
   });
-  const taskApiContract = await prisma.task.create({
+  const taskApi = await prisma.task.create({
     data: {
-      projectId: apollo.id,
-      title: 'API contract',
-      description: 'REST and GraphQL endpoint definitions',
+      projectId: proj1.id,
+      title: 'API Gateway & Security',
+      description: 'REST and GraphQL contract definitions',
     },
   });
-  const taskLaunchChecklist = await prisma.task.create({
+  const taskDr = await prisma.task.create({
     data: {
-      projectId: apollo.id,
-      title: 'Launch checklist',
-      description: 'Deployment and verification procedures',
+      projectId: proj1.id,
+      title: 'Disaster Recovery & SLA',
+      description: 'High availability and backup validation',
     },
   });
 
-  // Apollo Document 1: Homepage Spec (DRAFT)
-  await createDocument(apollo.id, bob.id, {
-    title: 'Homepage Spec',
-    taskId: taskWireframes.id,
-    content: '# Homepage Specification\n\nDetailed layouts for header, hero banner, and feature grid.',
-    changeSummary: 'Initial draft of homepage specs',
+  // Doc 1.1: System Architecture Blueprint (DRAFT)
+  await createDocument(proj1.id, bob.id, {
+    title: 'System Architecture Blueprint',
+    taskId: taskArch.id,
+    content: '# Core Platform Architecture\n\nHigh-level architectural overview of distributed microservices, message queues, and tenant isolation.',
+    changeSummary: 'Initial architectural draft',
   });
 
-  // Apollo Document 2: API Contract (IN_REVIEW)
-  const apiContractDoc = await createDocument(apollo.id, bob.id, {
-    title: 'API Contract',
-    taskId: taskApiContract.id,
-    content: '# API Contract\n\nSpecification for `/api/v1` routes and JSON response envelopes.',
-    changeSummary: 'Version 1 of API specifications',
+  // Doc 1.2: API Gateway Specification (IN_REVIEW - Carol approved, awaiting Dave)
+  const apiDoc = await createDocument(proj1.id, bob.id, {
+    title: 'API Gateway Specification',
+    taskId: taskApi.id,
+    content: '# API Gateway Contract v1\n\nSpecification for `/api/v1` routes, rate limiting tiers (100 req/sec), and JWT validation envelopes.',
+    changeSummary: 'v1 Gateway routing spec',
   });
-  await submitDocument(apiContractDoc.id, bob.id);
-  await recordDecision(apiContractDoc.id, carol.id, {
+  await submitDocument(apiDoc.id, bob.id);
+  await recordDecision(apiDoc.id, carol.id, {
     decision: 'APPROVE',
-    comment: 'Endpoints look clean and compliant.',
+    comment: 'Rate limiting parameters and route definitions verified.',
   });
 
-  // Apollo Document 3: Vendor Agreement (CHANGES_REQUESTED)
-  const vendorAgreementDoc = await createDocument(apollo.id, bob.id, {
-    title: 'Vendor Agreement',
-    content: '# Third-Party Vendor SLA\n\nService level requirements for external API providers.',
-    changeSummary: 'Initial SLA draft',
+  // Doc 1.3: Payment Gateway SLA Agreement (CHANGES_REQUESTED)
+  const slaDoc = await createDocument(proj1.id, bob.id, {
+    title: 'Payment Gateway SLA Agreement',
+    content: '# Third-Party Payment SLA\n\nService level requirements: 99.99% uptime, 250ms p95 latency, and incident escalation rules.',
+    changeSummary: 'Initial SLA draft with payment processor',
   });
-  await submitDocument(vendorAgreementDoc.id, bob.id);
-  await recordDecision(vendorAgreementDoc.id, carol.id, {
+  await submitDocument(slaDoc.id, bob.id);
+  await recordDecision(slaDoc.id, carol.id, {
     decision: 'REQUEST_CHANGES',
-    comment: 'Please clarify section 3 payment terms and penalty clauses.',
+    comment: 'Please clarify section 4 penalty clauses and webhook retry backoff behavior.',
   });
 
-  // Apollo Document 4: Brand Guidelines (IN_APPROVAL)
-  const brandGuidelinesDoc = await createDocument(apollo.id, bob.id, {
-    title: 'Brand Guidelines',
-    content: '# Visual Identity & Brand System\n\nColor palette, typography scale, and logo usage rules.',
-    changeSummary: 'Initial brand guidelines document',
+  // Doc 1.4: Enterprise Brand Guidelines (IN_APPROVAL - Reviewers approved, awaiting Erin)
+  const brandDoc = await createDocument(proj1.id, bob.id, {
+    title: 'Enterprise Brand Guidelines',
+    content: '# Visual Identity & Design Tokens\n\nDesign system colors, typography scales, accessibility contrasts (WCAG AAA), and logo guidelines.',
+    changeSummary: 'Complete brand tokens specification',
   });
-  await submitDocument(brandGuidelinesDoc.id, bob.id);
-  await recordDecision(brandGuidelinesDoc.id, carol.id, {
+  await submitDocument(brandDoc.id, bob.id);
+  await recordDecision(brandDoc.id, carol.id, {
     decision: 'APPROVE',
-    comment: 'Color palette is great.',
+    comment: 'Design tokens and accessibility compliance verified.',
   });
-  await recordDecision(brandGuidelinesDoc.id, dave.id, {
+  await recordDecision(brandDoc.id, dave.id, {
     decision: 'APPROVE',
-    comment: 'Typography scale looks consistent.',
+    comment: 'Typography scale and color palette look solid.',
   });
 
-  // Apollo Document 5: Launch Report (APPROVED)
-  const launchReportDoc = await createDocument(apollo.id, bob.id, {
-    title: 'Launch Report',
-    taskId: taskLaunchChecklist.id,
-    content: '# Launch Readiness Report v1\n\nSummary of load testing and infrastructure checklist.',
-    changeSummary: 'v1 initial readiness assessment',
+  // Doc 1.5: Production Disaster Recovery Plan (APPROVED - Full 4-Eyes Sign-off & Audit Trail)
+  const drDoc = await createDocument(proj1.id, bob.id, {
+    title: 'Production Disaster Recovery Plan',
+    taskId: taskDr.id,
+    content: '# Disaster Recovery Plan v1\n\nOverview of database snapshot frequency and cluster failover targets.',
+    changeSummary: 'v1 initial disaster recovery draft',
   });
-  await submitDocument(launchReportDoc.id, bob.id);
-  await recordDecision(launchReportDoc.id, carol.id, {
+  await submitDocument(drDoc.id, bob.id);
+  await recordDecision(drDoc.id, carol.id, {
     decision: 'REQUEST_CHANGES',
-    comment: 'Needs detailed budget breakdown and rollback plan.',
+    comment: 'Need exact RTO (< 15 mins) and RPO (< 1 min) metrics with automated runbooks.',
   });
 
-  // Bob creates v2
-  await createVersion(launchReportDoc.id, bob.id, {
-    content: '# Launch Readiness Report v2\n\nAdded section 4: Budget breakdown & rollback procedures.',
-    changeSummary: 'Added budget breakdown and emergency rollback procedures.',
+  // Bob creates v2 addressing feedback
+  await createVersion(drDoc.id, bob.id, {
+    content: '# Production Disaster Recovery Plan v2\n\nComprehensive recovery procedure:\n- Target RTO: 10 minutes\n- Target RPO: 45 seconds\n- Multi-region automated replication\n- Annual drill protocols and team roles',
+    changeSummary: 'v2: Added explicit RTO/RPO targets, automated failover runbooks, and failback verification.',
   });
 
-  // Find comment by Carol to resolve
-  const commentsToResolve = await prisma.comment.findMany({
-    where: { documentId: launchReportDoc.id },
-  });
-  if (commentsToResolve.length > 0) {
-    await resolveComment(commentsToResolve[0].id, bob.id);
+  // Resolve Carol's feedback comment
+  const drComments = await prisma.comment.findMany({ where: { documentId: drDoc.id } });
+  if (drComments.length > 0) {
+    await resolveComment(drComments[0].id, bob.id);
   }
 
-  // Bob resubmits launch report
-  await submitDocument(launchReportDoc.id, bob.id);
-  await recordDecision(launchReportDoc.id, carol.id, {
+  // Bob resubmits v2
+  await submitDocument(drDoc.id, bob.id);
+  await recordDecision(drDoc.id, carol.id, {
     decision: 'APPROVE',
-    comment: 'Budget breakdown looks clear now.',
+    comment: 'RTO and RPO metrics verified and automated runbook approved.',
   });
-  await recordDecision(launchReportDoc.id, dave.id, {
+  await recordDecision(drDoc.id, dave.id, {
     decision: 'APPROVE',
-    comment: 'Rollback procedures verified.',
+    comment: 'Failover scripts and replication verified.',
   });
-  await recordDecision(launchReportDoc.id, erin.id, {
+  await recordDecision(drDoc.id, erin.id, {
     decision: 'APPROVE',
-    comment: 'Final approval granted for launch!',
+    comment: 'Executive sign-off granted. Plan certified for compliance.',
   });
 
-  // Apollo Document 6: Legacy Proposal (REJECTED)
-  const legacyProposalDoc = await createDocument(apollo.id, bob.id, {
-    title: 'Legacy Proposal',
-    content: '# Legacy Monolith Migration Proposal\n\nProposal to refactor existing legacy backend into subservices.',
-    changeSummary: 'Initial proposal draft',
+  // Doc 1.6: Legacy Monolith Migration Proposal (REJECTED)
+  const legacyDoc = await createDocument(proj1.id, bob.id, {
+    title: 'Legacy Monolith Migration Proposal',
+    content: '# Monolith Migration Strategy\n\nProposal to decommission legacy backend services over 18 months.',
+    changeSummary: 'Initial migration roadmap',
   });
-  await submitDocument(legacyProposalDoc.id, bob.id);
-  await recordDecision(legacyProposalDoc.id, carol.id, {
+  await submitDocument(legacyDoc.id, bob.id);
+  await recordDecision(legacyDoc.id, carol.id, {
     decision: 'APPROVE',
-    comment: 'Technical analysis is sound.',
+    comment: 'Technical feasibility looks good.',
   });
-  await recordDecision(legacyProposalDoc.id, dave.id, {
+  await recordDecision(legacyDoc.id, dave.id, {
     decision: 'APPROVE',
-    comment: 'Approved from engineering perspective.',
+    comment: 'Approved from infrastructure standpoint.',
   });
-  await recordDecision(legacyProposalDoc.id, erin.id, {
+  await recordDecision(legacyDoc.id, erin.id, {
     decision: 'REJECT',
-    comment: 'Not aligned with current Q3 strategic priorities.',
+    comment: 'Deferred to next fiscal year due to resource allocation constraints.',
   });
 
-  // 3. Create Project "Nova Mobile App"
-  const nova = await prisma.project.create({
+  // =========================================================================
+  // Project 2: Test Project - Customer Web & Mobile Portal
+  // =========================================================================
+  const proj2 = await prisma.project.create({
     data: {
-      name: 'Nova Mobile App',
-      description: 'Cross-platform iOS and Android mobile app development.',
-      createdById: admin.id,
+      name: 'Test Project - Customer Web & Mobile Portal',
+      description: 'Next-generation customer self-service dashboard, mobile application, and billing interface.',
+      createdById: alice.id,
       members: {
         create: [
           { userId: admin.id, role: 'OWNER' },
-          { userId: grace.id, role: 'OWNER' },
-          { userId: carol.id, role: 'APPROVER' },
-          { userId: bob.id, role: 'REVIEWER' },
+          { userId: alice.id, role: 'OWNER' },
           { userId: dave.id, role: 'AUTHOR' },
+          { userId: bob.id, role: 'REVIEWER' },
+          { userId: carol.id, role: 'APPROVER' },
+          { userId: frank.id, role: 'VIEWER' },
         ],
       },
     },
   });
 
-  // Nova Document 1: iOS Onboarding Spec (IN_REVIEW)
-  const iosOnboardingDoc = await createDocument(nova.id, dave.id, {
-    title: 'iOS Onboarding Spec',
-    content: '# iOS Onboarding Architecture\n\nFlow diagrams and screen definitions for user signup.',
-    changeSummary: 'Initial onboarding design spec',
+  const taskOnboard = await prisma.task.create({
+    data: {
+      projectId: proj2.id,
+      title: 'Customer Onboarding Journey',
+      description: 'Signup, 2FA verification, and organization creation flow',
+    },
   });
-  await submitDocument(iosOnboardingDoc.id, dave.id);
 
-  console.log('Database seeding completed successfully!');
+  // Doc 2.1: Customer Onboarding Spec (IN_REVIEW)
+  const onboardDoc = await createDocument(proj2.id, dave.id, {
+    title: 'Customer Onboarding Spec',
+    taskId: taskOnboard.id,
+    content: '# Customer Onboarding UX & Logic\n\nStep 1: Email verification via OTP.\nStep 2: Company profile setup.\nStep 3: Role-based invite dispatch.',
+    changeSummary: 'Initial user journey spec',
+  });
+  await submitDocument(onboardDoc.id, dave.id);
+
+  // Doc 2.2: Mobile App Release Checklist (APPROVED)
+  const releaseDoc = await createDocument(proj2.id, dave.id, {
+    title: 'Mobile App Release Checklist',
+    content: '# Mobile Release Checklist v1\n\nBuild signatures, iOS TestFlight rollout, and Android Play Console release track verification.',
+    changeSummary: 'Release readiness checklist',
+  });
+  await submitDocument(releaseDoc.id, dave.id);
+  await recordDecision(releaseDoc.id, bob.id, {
+    decision: 'APPROVE',
+    comment: 'Build verification verified.',
+  });
+  await recordDecision(releaseDoc.id, carol.id, {
+    decision: 'APPROVE',
+    comment: 'Mobile release signed off.',
+  });
+
+  // =========================================================================
+  // Project 3: Test Project - Security & Regulatory Compliance
+  // =========================================================================
+  const proj3 = await prisma.project.create({
+    data: {
+      name: 'Test Project - Security & Regulatory Compliance',
+      description: 'SOC2 Type II, ISO-27001 audit controls, and end-to-end data encryption policies.',
+      createdById: alice.id,
+      members: {
+        create: [
+          { userId: admin.id, role: 'OWNER' },
+          { userId: alice.id, role: 'OWNER' },
+          { userId: bob.id, role: 'AUTHOR' },
+          { userId: carol.id, role: 'REVIEWER' },
+          { userId: erin.id, role: 'APPROVER' },
+          { userId: frank.id, role: 'VIEWER' },
+        ],
+      },
+    },
+  });
+
+  // Doc 3.1: Zero-Trust Access Control Protocol (IN_APPROVAL)
+  const zeroTrustDoc = await createDocument(proj3.id, bob.id, {
+    title: 'Zero-Trust Access Control Protocol',
+    content: '# Zero-Trust Architecture Policy\n\nEnforces mutual TLS across all microservice boundaries, mandatory hardware security keys (FIDO2), and ephemeral IAM roles.',
+    changeSummary: 'Complete zero-trust baseline policy',
+  });
+  await submitDocument(zeroTrustDoc.id, bob.id);
+  await recordDecision(zeroTrustDoc.id, carol.id, {
+    decision: 'APPROVE',
+    comment: 'Security posture aligned with ISO-27001 requirements.',
+  });
+
+  // Doc 3.2: Data Retention & Encryption Standard (DRAFT)
+  await createDocument(proj3.id, bob.id, {
+    title: 'Data Retention & Encryption Standard',
+    content: '# Encryption At Rest & Transit Standards\n\nAES-256-GCM encryption for all object storage with annual KMS key rotation schedule.',
+    changeSummary: 'Initial policy draft',
+  });
+
+  // =========================================================================
+  // Project 4: Test Project - Cloud Infrastructure & DevOps
+  // =========================================================================
+  const proj4 = await prisma.project.create({
+    data: {
+      name: 'Test Project - Cloud Infrastructure & DevOps',
+      description: 'Multi-cloud deployment automation, Kubernetes clustering, and automated CI/CD pipelines.',
+      createdById: alice.id,
+      members: {
+        create: [
+          { userId: admin.id, role: 'OWNER' },
+          { userId: alice.id, role: 'OWNER' },
+          { userId: grace.id, role: 'OWNER' },
+          { userId: dave.id, role: 'AUTHOR' },
+          { userId: carol.id, role: 'REVIEWER' },
+          { userId: erin.id, role: 'APPROVER' },
+        ],
+      },
+    },
+  });
+
+  // Doc 4.1: Kubernetes Multi-Region Failover Architecture (IN_REVIEW)
+  const k8sDoc = await createDocument(proj4.id, dave.id, {
+    title: 'Kubernetes Multi-Region Failover Architecture',
+    content: '# Multi-Region Cluster Architecture\n\nActive-passive cross-region deployment with automated DNS failover under 60 seconds.',
+    changeSummary: 'High-availability infrastructure RFC',
+  });
+  await submitDocument(k8sDoc.id, dave.id);
+
+  console.log('Database seeded successfully with 4 Test Projects!');
 }
 
 if (process.argv[1]?.endsWith('seed.js') || process.argv[1]?.endsWith('seed.ts')) {
