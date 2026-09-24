@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { DocumentDetail, DocumentVersion, AuditEvent, DecisionType } from '../types.js';
 import { apiRequest } from '../api/client.js';
 import { StatusBadge } from '../components/StatusBadge.js';
@@ -9,6 +9,7 @@ import { FileImportDropzone } from '../components/FileImportDropzone.js';
 
 export const DocumentDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const { user } = useAuth();
 
   const [document, setDocument] = useState<DocumentDetail | null>(null);
@@ -26,6 +27,14 @@ export const DocumentDetailPage: React.FC = () => {
   const [vContent, setVContent] = useState('');
   const [vSummary, setVSummary] = useState('');
   const [vSubmitting, setVSubmitting] = useState(false);
+
+  // Edit Draft Modal state
+  const [showEditDocModal, setShowEditDocModal] = useState(false);
+  const [editDocTitle, setEditDocTitle] = useState('');
+  const [editDocTaskId, setEditDocTaskId] = useState('');
+  const [editDocContent, setEditDocContent] = useState('');
+  const [editDocSubmitting, setEditDocSubmitting] = useState(false);
+  const [editDocError, setEditDocError] = useState('');
 
   const [showDecisionModal, setShowDecisionModal] = useState(false);
   const [decisionType, setDecisionType] = useState<DecisionType>('APPROVE');
@@ -102,6 +111,53 @@ export const DocumentDetailPage: React.FC = () => {
       setActionError(err.message);
     } finally {
       setSubmittingAction(false);
+    }
+  };
+
+  const handleOpenEditDoc = () => {
+    if (!document) return;
+    setEditDocError('');
+    setEditDocTitle(document.title);
+    setEditDocTaskId(document.taskId || '');
+    setEditDocContent(document.currentVersion?.content || '');
+    setShowEditDocModal(true);
+  };
+
+  const handleSaveEditDoc = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!document) return;
+    setEditDocSubmitting(true);
+    setEditDocError('');
+    try {
+      await apiRequest(`/api/documents/${document.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          title: editDocTitle.trim(),
+          taskId: editDocTaskId || null,
+          content: editDocContent,
+        }),
+      });
+      setShowEditDocModal(false);
+      loadData();
+    } catch (err: any) {
+      setEditDocError(err.message);
+    } finally {
+      setEditDocSubmitting(false);
+    }
+  };
+
+  const handleDeleteDoc = async () => {
+    if (!document) return;
+    if (!confirm(`Are you sure you want to permanently delete document "${document.title}"?\nThis action cannot be undone.`)) {
+      return;
+    }
+    try {
+      await apiRequest(`/api/documents/${document.id}`, {
+        method: 'DELETE',
+      });
+      navigate(`/projects/${document.projectId}`);
+    } catch (err: any) {
+      alert(`Failed to delete document: ${err.message}`);
     }
   };
 
@@ -539,6 +595,41 @@ export const DocumentDetailPage: React.FC = () => {
             <button onClick={handleCopyContent} className="btn btn-secondary btn-sm" title="Copy raw Markdown content">
               {copied ? '✓ Copied' : '📋 Copy Content'}
             </button>
+
+            {hasAction('EDIT_DOCUMENT') && (
+              <button
+                onClick={handleOpenEditDoc}
+                className="btn btn-secondary btn-sm"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                  color: 'var(--accent-blue)',
+                  fontWeight: 600,
+                  borderColor: 'rgba(37,99,235,0.3)',
+                }}
+                title="Edit draft title and content directly"
+              >
+                <span>✏️</span>
+                <span>Edit Draft</span>
+              </button>
+            )}
+
+            {hasAction('DELETE_DOCUMENT') && (
+              <button
+                onClick={handleDeleteDoc}
+                className="btn btn-danger btn-sm"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                }}
+                title="Permanently delete this document"
+              >
+                <span>🗑️</span>
+                <span>Delete</span>
+              </button>
+            )}
 
             {hasAction('CREATE_VERSION') && (
               <button
@@ -1127,6 +1218,87 @@ export const DocumentDetailPage: React.FC = () => {
                   }}
                 >
                   {decisionSubmitting ? 'Recording...' : `Confirm ${decisionType}`}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Edit Draft Document */}
+      {showEditDocModal && (
+        <div className="modal-overlay">
+          <div className="modal modal-lg">
+            <div className="modal-header">
+              <h3 className="modal-title">✏️ Edit Draft Document</h3>
+              <button onClick={() => setShowEditDocModal(false)} className="modal-close">
+                ✕
+              </button>
+            </div>
+
+            {editDocError && (
+              <div
+                style={{
+                  background: 'rgba(239, 68, 68, 0.1)',
+                  color: '#dc2626',
+                  padding: '0.75rem',
+                  borderRadius: '6px',
+                  marginBottom: '1rem',
+                  fontSize: '0.85rem',
+                }}
+              >
+                ⚠️ {editDocError}
+              </div>
+            )}
+
+            <form onSubmit={handleSaveEditDoc}>
+              <div className="form-group">
+                <label className="form-label">Document Title</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={editDocTitle}
+                  onChange={(e) => setEditDocTitle(e.target.value)}
+                  placeholder="e.g. System Architecture Spec"
+                  required
+                />
+              </div>
+
+              {/* Import File Section */}
+              <div style={{ marginBottom: '1rem' }}>
+                <FileImportDropzone
+                  onFileLoaded={(fileData) => {
+                    setEditDocContent(fileData.content);
+                    if (fileData.suggestedTitle && !editDocTitle) {
+                      setEditDocTitle(fileData.suggestedTitle);
+                    }
+                  }}
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Specification Content (Markdown)</label>
+                <textarea
+                  className="form-textarea"
+                  value={editDocContent}
+                  onChange={(e) => setEditDocContent(e.target.value)}
+                  placeholder="Draft content in Markdown format..."
+                  rows={12}
+                  required
+                  style={{ fontFamily: 'monospace', fontSize: '0.875rem' }}
+                />
+              </div>
+
+              <div className="modal-footer">
+                <button
+                  type="button"
+                  onClick={() => setShowEditDocModal(false)}
+                  className="btn btn-secondary"
+                >
+                  Cancel
+                </button>
+                <button type="submit" className="btn btn-primary" disabled={editDocSubmitting}>
+                  {editDocSubmitting ? 'Saving Changes...' : 'Save Changes'}
                 </button>
               </div>
             </form>

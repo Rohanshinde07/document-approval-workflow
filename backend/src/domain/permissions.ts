@@ -20,7 +20,9 @@ export type AllowedAction =
   | 'DECIDE_REVIEW'
   | 'DECIDE_APPROVAL'
   | 'ADD_COMMENT'
-  | 'RESOLVE_COMMENT';
+  | 'RESOLVE_COMMENT'
+  | 'EDIT_DOCUMENT'
+  | 'DELETE_DOCUMENT';
 
 export function isTerminalStatus(status: DocumentStatus): boolean {
   return status === 'APPROVED' || status === 'REJECTED';
@@ -95,6 +97,16 @@ export function computeAllowedActions(ctx: DocumentPermissionContext): AllowedAc
     if (hasPendingApproval) {
       actions.push('DECIDE_APPROVAL');
     }
+  }
+
+  // Edit Draft: Author or Project Owner when in DRAFT
+  if (ctx.documentStatus === 'DRAFT' && (isAuthor || ctx.projectRole === 'OWNER')) {
+    actions.push('EDIT_DOCUMENT');
+  }
+
+  // Delete Document: Project Owner can delete any doc, Author can delete if DRAFT or REJECTED
+  if (ctx.projectRole === 'OWNER' || (isAuthor && (ctx.documentStatus === 'DRAFT' || ctx.documentStatus === 'REJECTED'))) {
+    actions.push('DELETE_DOCUMENT');
   }
 
   return actions;

@@ -773,3 +773,129 @@ export async function recordDecision(
     return updatedDocument;
   });
 }
+
+/**
+ * Update document title, linked task, and draft content (only permitted in DRAFT status)
+ */
+export async function updateDocument(
+  documentId: string,
+  userId: string,
+  data: {
+    title?: string;
+    taskId?: string | null;
+    content?: string;
+  }
+) {
+  const document = await prisma.document.findUnique({
+    where: { id: documentId },
+    include: { currentVersion: true, project: true },
+  });
+
+  if (!document) {
+    throw new NotFoundError('Document not found');
+  }
+
+  const membership = await getProjectMembership(document.projectId, userId);
+  const isAuthor = document.authorId === userId;
+  const isOwner = membership.role === 'OWNER';
+
+  if (!isAuthor && !isOwner) {
+    throw new ForbiddenError('Only author or project owner can edit this document');
+  }
+
+  if (document.status !== 'DRAFT') {
+    throw new BusinessRuleError(
+      'IMMUTABLE_DOCUMENT',
+      'Direct edits are only permitted in DRAFT status. Documents in review or approved require creating a new version.'
+    );
+  }
+
+  if (data.taskId) {
+    const task = await prisma.task.findUnique({ where: { id: data.taskId } });
+    if (!task || task.projectId !== document.projectId) {
+      throw new BusinessRuleError('INVALID_TASK', 'Linked task does not belong to this project');
+    }
+  }
+
+  return prisma.$transaction(async (tx) => {
+    // If content is provided, update the draft version
+    if (data.content !== undefined && document.currentVersionId) {
+      await tx.documentVersion.update({
+        where: { id: document.currentVersionId },
+        data: { content: data.content },
+      });
+    }
+
+    const updated = await tx.document.update({
+      where: { id: documentId },
+      data: {
+        title: data.title ? data.title.trim() : undefined,
+        taskId: data.taskId !== undefined ? data.taskId : undefined,
+      },
+      include: {
+        author: { select: { id: true, email: true, name: true } },
+        currentVersion: true,
+      },
+    });
+
+    return updated;
+  });
+}
+
+/**
+ * Delete a document and its cascading dependencies
+ */
+export async function deleteDocument(documentId: string, userId: string) {
+  const document = await prisma.document.findUnique({
+    where: { id: documentId },
+    include: { project: true },
+  });
+
+  if (!document) {
+    throw new NotFoundError('Document not found');
+  }
+
+  const membership = await getProjectMembership(document.projectId, userId);
+  const isAuthor = document.authorId === userId;
+  const isOwner = membership.role === 'OWNER';
+
+  if (!isOwner && !isAuthor) {
+    throw new ForbiddenError('Only author or project owner can delete this document');
+  }
+
+  return prisma.$transaction(async (tx) => {
+    // 1. Break currentVersionId foreign key cycle
+    await tx.document.update({
+      where: { id: documentId },
+      data: { currentVersionId: null },
+    });
+
+    // 2. Delete review assignments
+    await tx.reviewAssignment.deleteMany({
+      where: { documentId },
+    });
+
+    // 3. Delete comments
+    await tx.comment.deleteMany({
+      where: { documentId },
+    });
+
+    // 4. Delete audit events for this document
+    await tx.auditEvent.deleteMany({
+      where: { documentId },
+    });
+
+    // 5. Delete versions
+    await tx.documentVersion.deleteMany({
+      where: { documentId },
+    });
+
+    // 6. Delete document
+    await tx.document.delete({
+      where: { id: documentId },
+    });
+
+    return { success: true };
+  });
+}
+

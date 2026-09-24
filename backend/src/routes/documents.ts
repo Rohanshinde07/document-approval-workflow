@@ -8,6 +8,8 @@ import {
   createVersion,
   submitDocument,
   recordDecision,
+  updateDocument,
+  deleteDocument,
 } from '../services/documents.js';
 import { addComment } from '../services/comments.js';
 import { prisma } from '../db.js';
@@ -143,6 +145,33 @@ router.post('/:id/comments', async (req: Request, res: Response, next: NextFunct
     const data = addCommentSchema.parse(req.body);
     const comment = await addComment(docId, req.user!.id, data.body);
     res.status(201).json(comment);
+  } catch (err) {
+    next(err);
+  }
+});
+
+const updateDocSchema = z.object({
+  title: z.string().min(1).optional(),
+  content: z.string().min(1).optional(),
+  taskId: z.string().nullable().optional(),
+});
+
+router.patch('/:id', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const docId = getParam(req.params.id);
+    const data = updateDocSchema.parse(req.body);
+    const updated = await updateDocument(docId, req.user!.id, data);
+    res.json(updated);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.delete('/:id', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const docId = getParam(req.params.id);
+    const result = await deleteDocument(docId, req.user!.id);
+    res.json(result);
   } catch (err) {
     next(err);
   }

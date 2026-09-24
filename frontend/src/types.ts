@@ -25,12 +25,15 @@ export type AllowedAction =
   | 'DECIDE_REVIEW'
   | 'DECIDE_APPROVAL'
   | 'ADD_COMMENT'
-  | 'RESOLVE_COMMENT';
+  | 'RESOLVE_COMMENT'
+  | 'EDIT_DOCUMENT'
+  | 'DELETE_DOCUMENT';
 
 export interface User {
   id: string;
   email: string;
   name: string;
+  role?: string;
 }
 
 export interface ProjectListItem {

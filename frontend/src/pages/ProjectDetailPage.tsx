@@ -5,6 +5,7 @@ import { apiRequest } from '../api/client.js';
 import { StatusBadge } from '../components/StatusBadge.js';
 import { DOCUMENT_TEMPLATES, DocumentTemplate } from '../data/templates.js';
 import { FileImportDropzone } from '../components/FileImportDropzone.js';
+import { useAuth } from '../context/AuthContext.js';
 
 interface ProjectDetail {
   id: string;
@@ -17,6 +18,7 @@ interface ProjectDetail {
 
 export const ProjectDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
+  const { user } = useAuth();
   const [project, setProject] = useState<ProjectDetail | null>(null);
   const [documents, setDocuments] = useState<any[]>([]);
   const [statusFilter, setStatusFilter] = useState<string>('');
@@ -33,10 +35,22 @@ export const ProjectDetailPage: React.FC = () => {
   const [newDocSummary, setNewDocSummary] = useState('');
   const [docSubmitting, setDocSubmitting] = useState(false);
 
+  // Edit Document state
+  const [editingDoc, setEditingDoc] = useState<any | null>(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editTaskId, setEditTaskId] = useState('');
+  const [editContent, setEditContent] = useState('');
+  const [editSubmitting, setEditSubmitting] = useState(false);
+  const [editError, setEditError] = useState('');
+
   // Gemini AI Draft Generator
   const [generatingAI, setGeneratingAI] = useState(false);
   const [showAiDraftBox, setShowAiDraftBox] = useState(false);
   const [aiDraftPrompt, setAiDraftPrompt] = useState('');
+
+  const [showEditAiBox, setShowEditAiBox] = useState(false);
+  const [editAiPrompt, setEditAiPrompt] = useState('');
+  const [generatingEditAi, setGeneratingEditAi] = useState(false);
 
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
@@ -70,6 +84,29 @@ export const ProjectDetailPage: React.FC = () => {
       alert(`AI generation failed: ${err.message}`);
     } finally {
       setGeneratingAI(false);
+    }
+  };
+
+  const handleGenerateEditAi = async () => {
+    const promptToUse = editAiPrompt.trim() || editTitle.trim();
+    if (!promptToUse) {
+      alert('Please enter a brief topic or prompt for Gemini to rewrite/expand.');
+      return;
+    }
+    setGeneratingEditAi(true);
+    try {
+      const res = await apiRequest<{ content: string }>('/api/ai/generate-draft', {
+        method: 'POST',
+        body: JSON.stringify({ prompt: promptToUse, currentContent: editContent }),
+      });
+      if (res.content) {
+        setEditContent(res.content);
+        setShowEditAiBox(false);
+      }
+    } catch (err: any) {
+      alert(`AI generation failed: ${err.message}`);
+    } finally {
+      setGeneratingEditAi(false);
     }
   };
 
@@ -191,6 +228,67 @@ export const ProjectDetailPage: React.FC = () => {
   const canCreateDoc = project.myRole === 'OWNER' || project.myRole === 'AUTHOR';
   const isOwner = project.myRole === 'OWNER';
 
+  const canEdit = (doc: any) => {
+    const isDocAuthor = doc.authorId === user?.id || doc.author?.id === user?.id;
+    return doc.status === 'DRAFT' && (isDocAuthor || isOwner || user?.role === 'ADMIN');
+  };
+
+  const canDelete = (doc: any) => {
+    const isDocAuthor = doc.authorId === user?.id || doc.author?.id === user?.id;
+    return isOwner || user?.role === 'ADMIN' || (isDocAuthor && (doc.status === 'DRAFT' || doc.status === 'REJECTED'));
+  };
+
+  const handleOpenEditModal = async (doc: any) => {
+    setEditError('');
+    setEditingDoc(doc);
+    setEditTitle(doc.title);
+    setEditTaskId(doc.taskId || doc.task?.id || '');
+    setEditContent('');
+    try {
+      const detail = await apiRequest<any>(`/api/documents/${doc.id}`);
+      setEditContent(detail.currentVersion?.content || '');
+    } catch (err: any) {
+      setEditError(err.message);
+    }
+  };
+
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingDoc) return;
+    setEditSubmitting(true);
+    setEditError('');
+    try {
+      await apiRequest(`/api/documents/${editingDoc.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          title: editTitle.trim(),
+          taskId: editTaskId || null,
+          content: editContent,
+        }),
+      });
+      setEditingDoc(null);
+      loadData();
+    } catch (err: any) {
+      setEditError(err.message);
+    } finally {
+      setEditSubmitting(false);
+    }
+  };
+
+  const handleDeleteDoc = async (doc: any) => {
+    if (!confirm(`Are you sure you want to permanently delete document "${doc.title}"?\nThis action cannot be undone.`)) {
+      return;
+    }
+    try {
+      await apiRequest(`/api/documents/${doc.id}`, {
+        method: 'DELETE',
+      });
+      loadData();
+    } catch (err: any) {
+      alert(`Failed to delete document: ${err.message}`);
+    }
+  };
+
   const filteredDocuments = documents.filter((doc) => {
     if (statusFilter && doc.status !== statusFilter) return false;
     if (taskFilter && doc.taskId !== taskFilter) return false;
@@ -304,10 +402,40 @@ export const ProjectDetailPage: React.FC = () => {
                       </td>
                       <td>{doc.author.name}</td>
                       <td>v{doc.currentVersion?.versionNumber || 1}</td>
-                      <td>
-                        <Link to={`/documents/${doc.id}`} className="btn btn-secondary btn-sm">
-                          Open →
-                        </Link>
+                      <td style={{ whiteSpace: 'nowrap' }}>
+                        <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+                          <Link to={`/documents/${doc.id}`} className="btn btn-secondary btn-sm">
+                            Open →
+                          </Link>
+                          {canEdit(doc) && (
+                            <button
+                              onClick={() => handleOpenEditModal(doc)}
+                              className="btn btn-secondary btn-sm"
+                              title="Edit Draft"
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '0.2rem',
+                                color: 'var(--accent-blue)',
+                                fontWeight: 600,
+                                borderColor: 'rgba(37,99,235,0.3)',
+                                padding: '0.25rem 0.55rem',
+                              }}
+                            >
+                              ✏️ Edit
+                            </button>
+                          )}
+                          {canDelete(doc) && (
+                            <button
+                              onClick={() => handleDeleteDoc(doc)}
+                              className="btn btn-danger btn-sm"
+                              title="Delete Document"
+                              style={{ padding: '0.25rem 0.55rem' }}
+                            >
+                              🗑️
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -763,6 +891,172 @@ export const ProjectDetailPage: React.FC = () => {
                 </div>
               </form>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Edit Document */}
+      {editingDoc && (
+        <div className="modal-overlay">
+          <div className="modal modal-lg">
+            <div className="modal-header">
+              <h3 className="modal-title">✏️ Edit Draft: {editingDoc.title}</h3>
+              <button
+                onClick={() => {
+                  setEditingDoc(null);
+                  setShowEditAiBox(false);
+                }}
+                className="modal-close"
+              >
+                ✕
+              </button>
+            </div>
+
+            {editError && (
+              <div
+                style={{
+                  background: 'rgba(239, 68, 68, 0.1)',
+                  color: '#dc2626',
+                  padding: '0.75rem',
+                  borderRadius: '6px',
+                  marginBottom: '1rem',
+                  fontSize: '0.85rem',
+                }}
+              >
+                ⚠️ {editError}
+              </div>
+            )}
+
+            <form onSubmit={handleSaveEdit}>
+              <div className="form-group">
+                <label className="form-label">Document Title</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  placeholder="e.g. System Architecture Spec"
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Linked Task (Optional)</label>
+                <select
+                  className="form-select"
+                  value={editTaskId}
+                  onChange={(e) => setEditTaskId(e.target.value)}
+                >
+                  <option value="">No task linked</option>
+                  {project.tasks.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Import File Section */}
+              <div style={{ marginBottom: '1rem' }}>
+                <FileImportDropzone
+                  onFileLoaded={(fileData) => {
+                    setEditContent(fileData.content);
+                    if (fileData.suggestedTitle && !editTitle) {
+                      setEditTitle(fileData.suggestedTitle);
+                    }
+                  }}
+                />
+              </div>
+
+              <div className="form-group">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+                  <label className="form-label" style={{ marginBottom: 0 }}>
+                    Specification Content (Markdown)
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowEditAiBox(!showEditAiBox)}
+                    className="btn btn-secondary btn-sm"
+                    style={{
+                      background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(168, 85, 247, 0.1) 100%)',
+                      borderColor: '#818cf8',
+                      color: '#4338ca',
+                      fontWeight: 700,
+                      fontSize: '0.75rem',
+                      padding: '3px 9px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '5px',
+                    }}
+                    title="Ask Google Gemini 3.6 Flash to rewrite or expand this draft"
+                  >
+                    <span>✨</span>
+                    <span>{showEditAiBox ? 'Hide AI Assistant' : 'Improve with Gemini AI'}</span>
+                  </button>
+                </div>
+
+                {showEditAiBox && (
+                  <div
+                    style={{
+                      background: '#f8fafc',
+                      border: '1px solid #c7d2fe',
+                      borderRadius: '8px',
+                      padding: '0.85rem 1rem',
+                      marginBottom: '0.75rem',
+                    }}
+                  >
+                    <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#3730a3', marginBottom: '0.35rem' }}>
+                      ✨ Google Gemini 3.6 Flash Drafting Assistant
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <input
+                        type="text"
+                        className="form-input"
+                        placeholder="What should Gemini improve or write into this draft?"
+                        value={editAiPrompt}
+                        onChange={(e) => setEditAiPrompt(e.target.value)}
+                        style={{ fontSize: '0.85rem' }}
+                      />
+                      <button
+                        type="button"
+                        onClick={handleGenerateEditAi}
+                        disabled={generatingEditAi}
+                        className="btn btn-primary btn-sm"
+                        style={{ background: '#4f46e5', flexShrink: 0, fontWeight: 700 }}
+                      >
+                        {generatingEditAi ? 'Writing...' : 'Update Draft →'}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                <textarea
+                  className="form-textarea"
+                  value={editContent}
+                  onChange={(e) => setEditContent(e.target.value)}
+                  placeholder="Draft content in Markdown format..."
+                  rows={10}
+                  required
+                  style={{ fontFamily: 'monospace', fontSize: '0.875rem' }}
+                />
+              </div>
+
+              <div className="modal-footer">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingDoc(null);
+                    setShowEditAiBox(false);
+                  }}
+                  className="btn btn-secondary"
+                >
+                  Cancel
+                </button>
+                <button type="submit" className="btn btn-primary" disabled={editSubmitting}>
+                  {editSubmitting ? 'Saving Changes...' : 'Save Changes'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
