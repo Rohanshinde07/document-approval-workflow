@@ -61,7 +61,6 @@ const AdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const isAdmin =
     user.role === 'ADMIN' ||
     user.email === 'admin@demo.com' ||
-    user.email === 'rohanyshinde07@gmail.com' ||
     user.email.startsWith('admin@');
 
   if (!isAdmin) {

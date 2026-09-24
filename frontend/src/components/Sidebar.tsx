@@ -23,10 +23,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggleCollapse })
 
   const getInitial = (name: string) => name ? name.charAt(0).toUpperCase() : 'U';
 
-  const isOwnerOrAdmin =
+  const isAdmin =
     user.role === 'ADMIN' ||
     user.email === 'admin@demo.com' ||
-    user.email === 'rohanyshinde07@gmail.com' ||
     user.email.startsWith('admin@');
 
   return (
@@ -215,7 +214,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ collapsed, onToggleCollapse })
               {!collapsed && <span className="sidebar-text">Workflow Guide</span>}
             </button>
 
-            {isOwnerOrAdmin && (
+            {isAdmin && (
               <NavLink
                 to="/admin"
                 className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}

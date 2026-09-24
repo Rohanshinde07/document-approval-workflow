@@ -15,8 +15,8 @@ export const Navbar: React.FC = () => {
 
   const getInitial = (name: string) => name.charAt(0).toUpperCase();
   const isAdmin =
+    user.role === 'ADMIN' ||
     user.email === 'admin@demo.com' ||
-    user.email === 'rohanyshinde07@gmail.com' ||
     user.email.startsWith('admin@');
 
   return (
