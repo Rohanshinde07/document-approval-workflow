@@ -1,0 +1,70 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: document_workflow_db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: document_workflow
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d document_workflow"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: document_workflow_app
+    ports:
+      - "3000:3000"
+    environment:
+      PORT: 3000
+      DATABASE_URL: "postgresql://postgres:postgres@db:5432/document_workflow?schema=public"
+      JWT_SECRET: "super-secret-jwt-key-for-dev-and-testing-12345"
+    depends_on:
+      db:
+        condition: service_healthy
+    command: >
+      sh -c "npx prisma migrate deploy && node dist/seed/seed.js && node dist/server.js"
+
+  # Test profile services for isolated integration test execution
+  db-test:
+    profiles: ["test"]
+    image: postgres:16-alpine
+    container_name: document_workflow_db_test
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: document_workflow_test
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d document_workflow_test"]
+      interval: 2s
+      timeout: 5s
+      retries: 5
+
+  test:
+    profiles: ["test"]
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: document_workflow_test_runner
+    environment:
+      NODE_ENV: test
+      DATABASE_URL: "postgresql://postgres:postgres@db-test:5432/document_workflow_test?schema=public"
+      JWT_SECRET: "super-secret-jwt-key-for-dev-and-testing-12345"
+    depends_on:
+      db-test:
+        condition: service_healthy
+    command: >
+      sh -c "npx prisma migrate deploy && npm test"
+
+volumes:
+  postgres_data:

@@ -1,0 +1,95 @@
+# Document Revision & Approval Workflow System
+
+A full-stack, enterprise-grade Document Revision & Approval Workflow engine built with Node.js 22, Express 5, Prisma 6, PostgreSQL 16, and React + Vite.
+
+---
+
+## Key Features & Architectural Pillars
+
+1. **Workflow State Machine Engine**:
+   - Sequential 2-stage approval process (`DRAFT` → `IN_REVIEW` → `IN_APPROVAL` → `APPROVED` / `CHANGES_REQUESTED` / `REJECTED`).
+   - Only legal transitions are allowed, strictly calculated by pure functions in `backend/src/domain/workflow.ts`.
+   - Requires a new version (R10) and all previous comments resolved (R11) before resubmitting from `CHANGES_REQUESTED`.
+2. **Role-Based Authorization from Project Membership**:
+   - Roles (`OWNER`, `AUTHOR`, `REVIEWER`, `APPROVER`, `VIEWER`) are scoped per project.
+   - Upon document submission, required reviewers and approvers are **snapshotted** into immutable assignment records for that round (R4).
+   - Single source of truth for authorization: backend calculates `allowedActions` per document for the active user, and the frontend renders UI buttons strictly from this array.
+3. **Database-Level Immutable Audit Trail**:
+   - Every action writes an audit event atomically within the state-changing transaction.
+   - A PostgreSQL database trigger (`prevent_audit_log_tampering`) rejects `UPDATE` and `DELETE` operations on `audit_events` at the database level.
+4. **Race-Condition & Concurrency Protection**:
+   - Workflow operations execute inside `prisma.$transaction` with row locking (`SELECT ... FOR UPDATE`), preventing concurrent double-advancement or split-brain transitions.
+
+---
+
+## Tech Stack
+
+- **Runtime**: Node.js 22, TypeScript (`strict`)
+- **Backend Framework**: Express 5
+- **Validation**: Zod
+- **ORM & Database**: Prisma 6, PostgreSQL 16
+- **Authentication**: JWT Bearer Tokens (8h validity) & `bcryptjs`
+- **Frontend**: React, Vite, TypeScript, React Router, custom CSS
+- **Testing**: Vitest + Supertest against real PostgreSQL
+- **Containerization**: Docker Compose (multi-stage Dockerfile)
+
+---
+
+## Quick Start (Docker Compose)
+
+The easiest way to launch the entire application (PostgreSQL + Express + static React frontend) is via Docker Compose:
+
+```bash
+docker compose up --build
+```
+
+Once started:
+- Access the Web Application at: **http://localhost:3000**
+- Healthcheck endpoint: **http://localhost:3000/api/health**
+
+On startup, migrations will automatically apply and the seed script will populate standard demo users and demo projects.
+
+---
+
+## Demo Credentials
+
+All demo users share the password: **`password123`**
+
+| User Name | Email | Project Role (Apollo) | Project Role (Nova) |
+|---|---|---|---|
+| **Alice Smith** | `alice@demo.com` | `OWNER` | — |
+| **Bob Jones** | `bob@demo.com` | `AUTHOR` | `REVIEWER` |
+| **Carol Danvers** | `carol@demo.com` | `REVIEWER` | `APPROVER` |
+| **Dave Miller** | `dave@demo.com` | `REVIEWER` | `AUTHOR` |
+| **Erin Wright** | `erin@demo.com` | `APPROVER` | — |
+| **Frank Castle** | `frank@demo.com` | `VIEWER` | — |
+| **Grace Hopper** | `grace@demo.com` | — | `OWNER` |
+
+> *Note: On the login page, click any of the "Demo User Account" cards to instantly auto-fill credentials and sign in.*
+
+---
+
+## Running Tests
+
+### 1. Run Unit Tests (Pure Domain Logic)
+```bash
+npm --prefix backend test:unit
+```
+
+### 2. Run Integration Tests in Docker (Real Postgres Instance)
+```bash
+docker compose --profile test run --rm test
+```
+
+---
+
+## Key Design Decisions & Trade-offs
+
+- **Content is Markdown text stored in the version row**, not file uploads. This keeps focus on workflow correctness without S3/volume dependencies.
+- **One role per user per project.** Avoids ambiguous overlaps (e.g. same user reviewing and approving the same round).
+- **Two sequential stages, unanimous within each.** Review stage catches technical/content issues before approvers spend time.
+- **Snapshot of reviewers and approvers at submission.** Required sign-offs cannot shift under an in-flight document round.
+- **Resubmission requires a new version and resolved feedback.** Guarantees each round reviews new content and feedback is traceably addressed.
+- **Append-only audit log enforced by PostgreSQL trigger**, securing audit trail integrity at the DB level.
+- **Document row locking (`FOR UPDATE`)** for all workflow transactions to eliminate race conditions on final approvals.
+- **404 for non-members** to prevent leaking document existence to unauthorized project users.
