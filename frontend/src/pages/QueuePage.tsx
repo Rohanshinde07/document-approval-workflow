@@ -40,6 +40,10 @@ export const QueuePage: React.FC = () => {
   const myDocuments = queue?.myDocuments || [];
 
   const handleMetricCardClick = (filter: 'reviews' | 'approvals' | 'changes' | 'mydocs' | 'projects') => {
+    if (activeFilter === filter) {
+      setActiveFilter('all');
+      return;
+    }
     setActiveFilter(filter);
     // Scroll to the relevant section
     setTimeout(() => {
@@ -74,7 +78,7 @@ export const QueuePage: React.FC = () => {
         </p>
       </div>
 
-      {/* Summary Metrics Grid - Now Clickable */}
+      {/* Summary Metrics Grid - All 5 Cards Identical & Clickable */}
       <div className="metrics-grid">
         <div
           id="metric-reviews"
@@ -90,7 +94,7 @@ export const QueuePage: React.FC = () => {
             <div className="metric-value">{awaitingReviews.length}</div>
             <div className="metric-action-hint">Click to view →</div>
           </div>
-          <div className="metric-icon" style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#fbbf24' }}>
+          <div className="metric-icon" style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#d97706' }}>
             🔍
           </div>
         </div>
@@ -109,8 +113,8 @@ export const QueuePage: React.FC = () => {
             <div className="metric-value">{awaitingApprovals.length}</div>
             <div className="metric-action-hint">Click to view →</div>
           </div>
-          <div className="metric-icon" style={{ background: 'rgba(99, 102, 241, 0.15)', color: '#818cf8' }}>
-            ⚖
+          <div className="metric-icon" style={{ background: 'rgba(99, 102, 241, 0.15)', color: '#6366f1' }}>
+            ⚖️
           </div>
         </div>
 
@@ -128,8 +132,8 @@ export const QueuePage: React.FC = () => {
             <div className="metric-value">{needingChanges.length}</div>
             <div className="metric-action-hint">Click to view →</div>
           </div>
-          <div className="metric-icon" style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#f87171' }}>
-            ✍
+          <div className="metric-icon" style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444' }}>
+            ✍️
           </div>
         </div>
 
@@ -145,10 +149,10 @@ export const QueuePage: React.FC = () => {
           <div>
             <div className="metric-title">My Documents</div>
             <div className="metric-value">{myDocuments.length}</div>
-            <div className="metric-action-hint">In pipeline →</div>
+            <div className="metric-action-hint">Click to view →</div>
           </div>
-          <div className="metric-icon" style={{ background: 'rgba(37, 99, 235, 0.15)', color: '#2563eb' }}>
-            📄
+          <div className="metric-icon" style={{ background: 'rgba(14, 165, 233, 0.15)', color: '#0284c7' }}>
+            📑
           </div>
         </div>
 
@@ -159,26 +163,15 @@ export const QueuePage: React.FC = () => {
           role="button"
           tabIndex={0}
           onKeyDown={(e) => e.key === 'Enter' && handleMetricCardClick('projects')}
-          title="Click to view active projects"
+          title="Click to view your active projects"
         >
           <div>
             <div className="metric-title">Active Projects</div>
             <div className="metric-value">{projects.length}</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.2rem' }}>
-              <span className="metric-action-hint">View list ↓</span>
-              <span style={{ color: 'var(--text-dim)', fontSize: '0.75rem' }}>•</span>
-              <Link
-                to="/projects"
-                onClick={(e) => e.stopPropagation()}
-                style={{ fontSize: '0.75rem', color: 'var(--accent-blue)', fontWeight: 600, textDecoration: 'none' }}
-                title="Go to full Projects Hub"
-              >
-                Hub →
-              </Link>
-            </div>
+            <div className="metric-action-hint">Click to view →</div>
           </div>
-          <div className="metric-icon" style={{ background: 'rgba(59, 130, 246, 0.15)', color: '#60a5fa' }}>
-            📂
+          <div className="metric-icon" style={{ background: 'rgba(59, 130, 246, 0.15)', color: '#2563eb' }}>
+            📁
           </div>
         </div>
       </div>
