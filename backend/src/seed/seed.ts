@@ -52,6 +52,23 @@ export async function runSeed(force = false) {
     data: { name: 'Grace Hopper', email: 'grace@demo.com', passwordHash },
   });
 
+  // Demo Persona Accounts (Quick Switcher)
+  const ownerUser = await prisma.user.create({
+    data: { name: 'Project Owner', email: 'rohanyshinde07@gmail.com', passwordHash },
+  });
+  const authorUser = await prisma.user.create({
+    data: { name: 'Document Author', email: 'rohantrueview07@gmail.com', passwordHash },
+  });
+  const reviewerUser = await prisma.user.create({
+    data: { name: 'Technical Reviewer', email: 'rohanyshinde21@gmail.com', passwordHash },
+  });
+  const approverUser = await prisma.user.create({
+    data: { name: 'Executive Approver', email: 'rohanyogeshshinde0@gmail.com', passwordHash },
+  });
+  const viewerUser = await prisma.user.create({
+    data: { name: 'Stakeholder Viewer', email: 'k10xlegit@gmail.com', passwordHash },
+  });
+
   // 2. Create Project "Apollo Website Redesign"
   const apollo = await prisma.project.create({
     data: {
@@ -62,11 +79,16 @@ export async function runSeed(force = false) {
         create: [
           { userId: admin.id, role: 'OWNER' },
           { userId: alice.id, role: 'OWNER' },
+          { userId: ownerUser.id, role: 'OWNER' },
           { userId: bob.id, role: 'AUTHOR' },
+          { userId: authorUser.id, role: 'AUTHOR' },
           { userId: carol.id, role: 'REVIEWER' },
           { userId: dave.id, role: 'REVIEWER' },
+          { userId: reviewerUser.id, role: 'REVIEWER' },
           { userId: erin.id, role: 'APPROVER' },
+          { userId: approverUser.id, role: 'APPROVER' },
           { userId: frank.id, role: 'VIEWER' },
+          { userId: viewerUser.id, role: 'VIEWER' },
         ],
       },
     },

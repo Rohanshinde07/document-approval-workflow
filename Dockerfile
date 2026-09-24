@@ -12,6 +12,7 @@ RUN apt-get update -y && apt-get install -y openssl
 WORKDIR /app/backend
 COPY backend/package*.json ./
 COPY backend/prisma ./prisma/
+RUN sed -i 's/provider = "sqlite"/provider = "postgresql"/' prisma/schema.prisma
 RUN npm ci
 COPY backend/ ./
 RUN npm run prisma:generate
