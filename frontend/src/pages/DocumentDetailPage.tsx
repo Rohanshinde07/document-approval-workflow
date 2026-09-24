@@ -17,6 +17,7 @@ export const DocumentDetailPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [actionError, setActionError] = useState('');
+  const [copied, setCopied] = useState(false);
 
   // Modals / Action states
   const [showVersionModal, setShowVersionModal] = useState(false);
@@ -56,8 +57,8 @@ export const DocumentDetailPage: React.FC = () => {
     loadData();
   }, [id]);
 
-  if (loading) return <div style={{ padding: '2rem', textAlign: 'center' }}>Loading document...</div>;
-  if (error) return <div style={{ color: '#f87171', padding: '2rem' }}>Error loading document: {error}</div>;
+  if (loading) return <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>Loading document details...</div>;
+  if (error) return <div style={{ color: '#dc2626', padding: '2rem' }}>Error loading document: {error}</div>;
   if (!document) return null;
 
   const handleCreateVersion = async (e: React.FormEvent) => {
@@ -104,6 +105,12 @@ export const DocumentDetailPage: React.FC = () => {
   const handleRecordDecision = async (e: React.FormEvent) => {
     e.preventDefault();
     setActionError('');
+
+    if (decisionType === 'REQUEST_CHANGES' && !decisionComment.trim()) {
+      setActionError('Feedback comment is required when requesting changes.');
+      return;
+    }
+
     setDecisionSubmitting(true);
 
     try {
@@ -111,7 +118,7 @@ export const DocumentDetailPage: React.FC = () => {
         method: 'POST',
         body: JSON.stringify({
           decision: decisionType,
-          comment: decisionComment || undefined,
+          comment: decisionComment.trim() || undefined,
         }),
       });
 
@@ -128,12 +135,15 @@ export const DocumentDetailPage: React.FC = () => {
   const handleAddComment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!commentBody.trim()) return;
-    setCommentSubmitting(true);
 
+    setCommentSubmitting(true);
     try {
       await apiRequest(`/api/documents/${id}/comments`, {
         method: 'POST',
-        body: JSON.stringify({ body: commentBody }),
+        body: JSON.stringify({
+          body: commentBody.trim(),
+          versionId: selectedVersion?.id,
+        }),
       });
 
       setCommentBody('');
@@ -156,13 +166,48 @@ export const DocumentDetailPage: React.FC = () => {
     }
   };
 
+  const handleCopyContent = () => {
+    if (selectedVersion?.content) {
+      navigator.clipboard.writeText(selectedVersion.content);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
   const hasAction = (actionName: string) => document.allowedActions.includes(actionName as any);
+  const unresolvedCommentsCount = document.comments.filter((c) => !c.resolvedAt).length;
+
+  // Workflow Stepper Logic
+  const getStepStatus = (stepKey: string) => {
+    const s = document.status;
+    if (stepKey === 'DRAFT') {
+      return s === 'DRAFT' ? 'current' : 'completed';
+    }
+    if (stepKey === 'IN_REVIEW') {
+      if (s === 'DRAFT') return 'upcoming';
+      if (s === 'IN_REVIEW') return 'current';
+      if (s === 'CHANGES_REQUESTED') return 'warning';
+      return 'completed';
+    }
+    if (stepKey === 'IN_APPROVAL') {
+      if (s === 'DRAFT' || s === 'IN_REVIEW' || s === 'CHANGES_REQUESTED') return 'upcoming';
+      if (s === 'IN_APPROVAL') return 'current';
+      if (s === 'REJECTED') return 'rejected';
+      return 'completed';
+    }
+    if (stepKey === 'APPROVED') {
+      if (s === 'APPROVED') return 'completed';
+      if (s === 'REJECTED') return 'rejected';
+      return 'upcoming';
+    }
+    return 'upcoming';
+  };
 
   return (
     <div>
       {/* Back Link */}
       <div style={{ marginBottom: '1rem' }}>
-        <Link to={`/projects/${document.projectId}`} style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+        <Link to={`/projects/${document.projectId}`} style={{ color: 'var(--text-muted)', fontSize: '0.9rem', textDecoration: 'none' }}>
           ← Back to Project ({document.project?.name})
         </Link>
       </div>
@@ -171,10 +216,10 @@ export const DocumentDetailPage: React.FC = () => {
       {actionError && (
         <div
           style={{
-            backgroundColor: 'rgba(239, 68, 68, 0.15)',
-            color: '#f87171',
+            backgroundColor: 'rgba(239, 68, 68, 0.1)',
+            color: '#dc2626',
             padding: '0.85rem 1rem',
-            borderRadius: 'var(--radius-sm)',
+            borderRadius: '8px',
             marginBottom: '1rem',
             border: '1px solid rgba(239, 68, 68, 0.3)',
             display: 'flex',
@@ -182,13 +227,161 @@ export const DocumentDetailPage: React.FC = () => {
             alignItems: 'center',
           }}
         >
-          <span>{actionError}</span>
+          <span>⚠️ {actionError}</span>
           <button
             onClick={() => setActionError('')}
-            style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer' }}
+            style={{ background: 'none', border: 'none', color: '#dc2626', cursor: 'pointer', fontWeight: 700 }}
           >
             ✕
           </button>
+        </div>
+      )}
+
+      {/* Visual Workflow Pipeline Stepper */}
+      <div
+        style={{
+          background: 'white',
+          border: '1px solid var(--border-color)',
+          borderRadius: 'var(--radius-md)',
+          padding: '1.25rem 2rem',
+          marginBottom: '1.5rem',
+          boxShadow: 'var(--shadow-sm)',
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+          <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            Sequential Approval Pipeline
+          </span>
+          <span style={{ fontSize: '0.8rem', color: 'var(--text-dim)' }}>
+            Status: <strong style={{ color: 'var(--text-main)' }}>{document.status}</strong>
+          </span>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'relative' }}>
+          {[
+            { key: 'DRAFT', label: '1. Draft Creation', desc: 'Author Drafting' },
+            { key: 'IN_REVIEW', label: '2. Technical Review', desc: 'Reviewer Feedback' },
+            { key: 'IN_APPROVAL', label: '3. Final Sign-off', desc: 'Executive Approval' },
+            { key: 'APPROVED', label: '4. Sealed & Approved', desc: 'Audit Stamped' },
+          ].map((st, idx, arr) => {
+            const stepState = getStepStatus(st.key);
+            const isCompleted = stepState === 'completed';
+            const isCurrent = stepState === 'current';
+            const isWarning = stepState === 'warning';
+            const isRejected = stepState === 'rejected';
+
+            let dotColor = '#cbd5e1';
+            let dotText = String(idx + 1);
+            let textColor = 'var(--text-muted)';
+
+            if (isCompleted) {
+              dotColor = '#16a34a';
+              dotText = '✓';
+              textColor = 'var(--text-main)';
+            } else if (isCurrent) {
+              dotColor = '#2563eb';
+              textColor = '#2563eb';
+            } else if (isWarning) {
+              dotColor = '#d97706';
+              dotText = '!';
+              textColor = '#d97706';
+            } else if (isRejected) {
+              dotColor = '#dc2626';
+              dotText = '✕';
+              textColor = '#dc2626';
+            }
+
+            return (
+              <React.Fragment key={st.key}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', zIndex: 2 }}>
+                  <div
+                    style={{
+                      width: '36px',
+                      height: '36px',
+                      borderRadius: '50%',
+                      background: isCurrent ? 'white' : dotColor,
+                      border: isCurrent ? `3px solid ${dotColor}` : 'none',
+                      color: isCurrent ? dotColor : 'white',
+                      fontWeight: 800,
+                      fontSize: '0.85rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      boxShadow: isCurrent ? '0 0 0 4px rgba(37,99,235,0.2)' : 'none',
+                      transition: 'all 0.3s ease',
+                    }}
+                  >
+                    {dotText}
+                  </div>
+                  <div style={{ marginTop: '0.5rem', fontWeight: isCurrent ? 700 : 600, fontSize: '0.8rem', color: textColor }}>
+                    {isWarning && st.key === 'IN_REVIEW' ? '2. Changes Requested' : isRejected && st.key === 'APPROVED' ? '4. Rejected' : st.label}
+                  </div>
+                  <div style={{ fontSize: '0.7rem', color: 'var(--text-dim)', marginTop: '0.1rem' }}>{st.desc}</div>
+                </div>
+
+                {idx < arr.length - 1 && (
+                  <div
+                    style={{
+                      flex: 1,
+                      height: '3px',
+                      background: isCompleted ? '#16a34a' : isWarning ? '#d97706' : '#e2e8f0',
+                      margin: '0 0.5rem 1.25rem',
+                      transition: 'background 0.3s',
+                    }}
+                  />
+                )}
+              </React.Fragment>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Role Context Guidance Card */}
+      {document.status === 'CHANGES_REQUESTED' && document.authorId === user?.id && (
+        <div
+          style={{
+            background: 'rgba(245, 158, 11, 0.08)',
+            border: '1px solid rgba(245, 158, 11, 0.3)',
+            borderRadius: '10px',
+            padding: '1.25rem 1.5rem',
+            marginBottom: '1.5rem',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: '1rem',
+          }}
+        >
+          <div>
+            <div style={{ fontWeight: 700, color: '#b45309', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <span>⚠️ Action Required: Revisions Requested</span>
+              {unresolvedCommentsCount > 0 && (
+                <span style={{ background: '#fef3c7', color: '#b45309', padding: '0.15rem 0.5rem', borderRadius: '12px', fontSize: '0.75rem' }}>
+                  {unresolvedCommentsCount} Unresolved Feedback
+                </span>
+              )}
+            </div>
+            <p style={{ fontSize: '0.85rem', color: '#78350f', marginTop: '0.35rem' }}>
+              Reviewers have requested revisions. Please check the <strong>Feedback Thread</strong> tab, address comments, create a <strong>New Version</strong>, and resubmit.
+            </p>
+          </div>
+          <div style={{ display: 'flex', gap: '0.75rem' }}>
+            <button
+              onClick={() => {
+                setVContent(document.currentVersion?.content || '');
+                setVSummary('Addressing reviewer comments');
+                setShowVersionModal(true);
+              }}
+              className="btn btn-secondary btn-sm"
+            >
+              + Create v{(document.currentVersion?.versionNumber || 1) + 1} Revision
+            </button>
+            {hasAction('SUBMIT') && (
+              <button onClick={handleSubmitDoc} className="btn btn-primary btn-sm" disabled={submittingAction}>
+                {submittingAction ? 'Submitting...' : '🚀 Resubmit Document'}
+              </button>
+            )}
+          </div>
         </div>
       )}
 
@@ -197,22 +390,34 @@ export const DocumentDetailPage: React.FC = () => {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.4rem' }}>
-              <h1 style={{ fontSize: '1.75rem', fontWeight: 700 }}>{document.title}</h1>
+              <h1 style={{ fontSize: '1.75rem', fontWeight: 800 }}>{document.title}</h1>
               <StatusBadge status={document.status} />
             </div>
 
-            <div style={{ display: 'flex', gap: '1.25rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+            <div style={{ display: 'flex', gap: '1.25rem', fontSize: '0.875rem', color: 'var(--text-muted)', flexWrap: 'wrap' }}>
               <div>Author: <strong>{document.author?.name}</strong></div>
               {document.task && <div>Task: <strong>{document.task.title}</strong></div>}
               <div>Current Version: <strong>v{document.currentVersion?.versionNumber || 1}</strong></div>
-              <div>My Role: <span className="role-badge">{document.myRole}</span></div>
+              <div>Project: <strong style={{ color: 'var(--accent-blue)' }}>{document.project?.name}</strong></div>
+              <div>My Project Role: <span className="role-badge">{document.myRole}</span></div>
             </div>
           </div>
 
-          {/* Render Contextual Action Buttons from allowedActions */}
-          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+          {/* Contextual Action Buttons */}
+          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
+            <button onClick={handleCopyContent} className="btn btn-secondary btn-sm" title="Copy raw Markdown content">
+              {copied ? '✓ Copied' : '📋 Copy Content'}
+            </button>
+
             {hasAction('CREATE_VERSION') && (
-              <button onClick={() => setShowVersionModal(true)} className="btn btn-secondary">
+              <button
+                onClick={() => {
+                  setVContent(document.currentVersion?.content || '');
+                  setVSummary(`Revision v${(document.currentVersion?.versionNumber || 1) + 1}`);
+                  setShowVersionModal(true);
+                }}
+                className="btn btn-secondary"
+              >
                 + New Version
               </button>
             )}
@@ -235,9 +440,14 @@ export const DocumentDetailPage: React.FC = () => {
                   setShowDecisionModal(true);
                 }}
                 className="btn btn-primary"
-                style={{ background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)' }}
+                style={{
+                  background:
+                    document.status === 'IN_APPROVAL'
+                      ? 'linear-gradient(135deg, #15803d, #16a34a)'
+                      : 'linear-gradient(135deg, #2563eb, #7c3aed)',
+                }}
               >
-                ⚖ Record Decision
+                {document.status === 'IN_APPROVAL' ? '🛡️ Final Sign-off Decision' : '⚖ Record Review Decision'}
               </button>
             )}
           </div>
@@ -256,19 +466,24 @@ export const DocumentDetailPage: React.FC = () => {
           className={`tab ${activeTab === 'assignments' ? 'active' : ''}`}
           onClick={() => setActiveTab('assignments')}
         >
-          Active Review Round ({document.currentRoundAssignments.length})
+          Review Assignments ({document.currentRoundAssignments.length})
         </button>
         <button
           className={`tab ${activeTab === 'comments' ? 'active' : ''}`}
           onClick={() => setActiveTab('comments')}
         >
           Feedback Thread ({document.comments.length})
+          {unresolvedCommentsCount > 0 && (
+            <span style={{ marginLeft: '0.4rem', background: '#dc2626', color: 'white', borderRadius: '10px', padding: '0.1rem 0.45rem', fontSize: '0.7rem', fontWeight: 700 }}>
+              {unresolvedCommentsCount}
+            </span>
+          )}
         </button>
         <button
           className={`tab ${activeTab === 'audit' ? 'active' : ''}`}
           onClick={() => setActiveTab('audit')}
         >
-          Audit Timeline ({auditEvents.length})
+          Audit Trail ({auditEvents.length})
         </button>
       </div>
 
@@ -307,12 +522,14 @@ export const DocumentDetailPage: React.FC = () => {
             </div>
           </div>
 
-          <div style={{ marginBottom: '1rem', fontStyle: 'italic', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-            <strong>Change Summary:</strong> {selectedVersion?.changeSummary || 'N/A'}
+          <div style={{ marginBottom: '1.25rem', padding: '0.65rem 1rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+            <strong>Change Summary:</strong> {selectedVersion?.changeSummary || 'Initial version'}
           </div>
 
-          <div className="markdown-body">
-            {selectedVersion?.content || 'No content recorded.'}
+          <div className="markdown-body" style={{ minHeight: '200px', lineHeight: 1.7, fontSize: '0.95rem' }}>
+            <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit', margin: 0 }}>
+              {selectedVersion?.content || 'No content recorded.'}
+            </pre>
           </div>
         </div>
       )}
@@ -321,45 +538,60 @@ export const DocumentDetailPage: React.FC = () => {
       {activeTab === 'assignments' && (
         <div className="card">
           <div className="card-header">
-            <h2 className="card-title">Review & Approval Assignments Matrix</h2>
-            <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-              Snapshotted for Version v{document.currentVersion?.versionNumber || 1}
+            <h2 className="card-title">Current Round Review Assignments</h2>
+            <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+              Stage: <strong>{document.status === 'IN_APPROVAL' ? 'APPROVAL (Approver Round)' : 'REVIEW (Technical Review Round)'}</strong>
             </span>
           </div>
 
           {document.currentRoundAssignments.length === 0 ? (
             <p style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>
-              No assignments have been created for the current version yet. Submit the document to launch a review round.
+              No assignments recorded yet. Assignments are snapshotted when the author submits the document.
             </p>
           ) : (
             <div className="table-container">
               <table className="table">
                 <thead>
                   <tr>
-                    <th>Assigned User</th>
+                    <th>Reviewer / Approver</th>
                     <th>Stage</th>
-                    <th>Status</th>
-                    <th>Decided Date</th>
+                    <th>Decision Status</th>
                     <th>Decision Comment</th>
+                    <th>Decided Date</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {document.currentRoundAssignments.map((assignment) => (
-                    <tr key={assignment.id}>
-                      <td style={{ fontWeight: 600 }}>{assignment.user?.name}</td>
+                  {document.currentRoundAssignments.map((a) => (
+                    <tr key={a.id}>
+                      <td style={{ fontWeight: 600 }}>{a.user?.name || 'User'}</td>
                       <td>
-                        <span className="role-badge">{assignment.stage}</span>
+                        <span className="role-badge">{a.stage}</span>
                       </td>
                       <td>
-                        <StatusBadge status={assignment.status} />
+                        <span
+                          style={{
+                            fontWeight: 700,
+                            fontSize: '0.82rem',
+                            color:
+                              a.status === 'APPROVED'
+                                ? '#15803d'
+                                : a.status === 'CHANGES_REQUESTED'
+                                ? '#dc2626'
+                                : a.status === 'REJECTED'
+                                ? '#be123c'
+                                : a.status === 'CANCELLED'
+                                ? '#94a3b8'
+                                : '#d97706',
+                          }}
+                        >
+                          {a.status}
+                        </span>
                       </td>
-                      <td>
-                        {assignment.decidedAt
-                          ? new Date(assignment.decidedAt).toLocaleString()
-                          : 'Pending'}
+                      <td style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                        {a.decisionComment || '—'}
                       </td>
-                      <td style={{ color: 'var(--text-muted)' }}>
-                        {assignment.decisionComment || '—'}
+                      <td style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                        {a.decidedAt ? new Date(a.decidedAt).toLocaleString() : 'Pending'}
                       </td>
                     </tr>
                   ))}
@@ -374,127 +606,125 @@ export const DocumentDetailPage: React.FC = () => {
       {activeTab === 'comments' && (
         <div className="card">
           <div className="card-header">
-            <h2 className="card-title">Feedback & Change Requests</h2>
+            <h2 className="card-title">Feedback Thread & Resolution Checklist</h2>
+            <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+              {document.comments.length} Comments ({unresolvedCommentsCount} Unresolved)
+            </span>
           </div>
 
-          {document.comments.length === 0 ? (
-            <p style={{ color: 'var(--text-muted)', fontStyle: 'italic', marginBottom: '1.5rem' }}>
-              No comments have been posted yet.
-            </p>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
-              {document.comments.map((comment) => (
-                <div
-                  key={comment.id}
-                  style={{
-                    backgroundColor: '#0f172a',
-                    border: '1px solid var(--border-color)',
-                    borderRadius: 'var(--radius-sm)',
-                    padding: '1rem',
-                  }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
-                    <div>
-                      <strong>{comment.author?.name}</strong>{' '}
-                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                        on version v{comment.version?.versionNumber || 1} • {new Date(comment.createdAt).toLocaleString()}
-                      </span>
-                    </div>
-
-                    {comment.resolvedAt ? (
-                      <span className="badge badge-approved" style={{ fontSize: '0.7rem' }}>
-                        Resolved in v{comment.resolvedInVersion?.versionNumber || 'current'} by {comment.resolvedBy?.name}
-                      </span>
-                    ) : (
-                      <span className="badge badge-changes_requested" style={{ fontSize: '0.7rem' }}>
-                        Unresolved
-                      </span>
-                    )}
-                  </div>
-
-                  <p style={{ fontSize: '0.925rem', whiteSpace: 'pre-wrap', marginBottom: '0.5rem' }}>
-                    {comment.body}
-                  </p>
-
-                  {/* Resolution action for document author */}
-                  {!comment.resolvedAt && hasAction('RESOLVE_COMMENT') && (
-                    <button
-                      onClick={() => handleResolveComment(comment.id)}
-                      className="btn btn-secondary btn-sm"
-                    >
-                      ✓ Mark Resolved in Current Version
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-
           {/* Add Comment Form */}
-          {hasAction('ADD_COMMENT') && (
-            <form onSubmit={handleAddComment} style={{ borderTop: '1px solid var(--border-color)', paddingTop: '1rem' }}>
-              <div className="form-group">
-                <label className="form-label">Add Feedback Comment</label>
-                <textarea
-                  className="form-textarea"
-                  value={commentBody}
-                  onChange={(e) => setCommentBody(e.target.value)}
-                  placeholder="Enter feedback or question on current version..."
-                  rows={3}
-                  required
-                />
-              </div>
+          <form onSubmit={handleAddComment} style={{ marginBottom: '2rem' }}>
+            <div className="form-group">
+              <textarea
+                className="form-textarea"
+                value={commentBody}
+                onChange={(e) => setCommentBody(e.target.value)}
+                placeholder="Leave feedback, review note, or question on this revision..."
+                rows={3}
+                required
+              />
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
               <button type="submit" className="btn btn-secondary btn-sm" disabled={commentSubmitting}>
                 {commentSubmitting ? 'Posting...' : 'Post Comment'}
               </button>
-            </form>
-          )}
+            </div>
+          </form>
+
+          {/* Comment List */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            {document.comments.map((c) => (
+              <div
+                key={c.id}
+                style={{
+                  border: c.resolvedAt ? '1px solid #e2e8f0' : '1px solid rgba(245, 158, 11, 0.4)',
+                  background: c.resolvedAt ? '#fafafa' : '#fffbeb',
+                  borderRadius: '10px',
+                  padding: '1rem 1.25rem',
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <strong style={{ fontSize: '0.9rem' }}>{c.author?.name || 'User'}</strong>
+                    {c.version && (
+                      <span style={{ background: '#e2e8f0', color: '#475569', fontSize: '0.7rem', padding: '0.1rem 0.4rem', borderRadius: '4px' }}>
+                        v{c.version.versionNumber}
+                      </span>
+                    )}
+                  </div>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                    {new Date(c.createdAt).toLocaleString()}
+                  </span>
+                </div>
+
+                <p style={{ margin: '0.25rem 0 0.75rem', color: '#334155', fontSize: '0.9rem', lineHeight: 1.5 }}>
+                  {c.body}
+                </p>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid rgba(0,0,0,0.05)', paddingTop: '0.5rem' }}>
+                  {c.resolvedAt ? (
+                    <span style={{ color: '#16a34a', fontSize: '0.8rem', fontWeight: 600 }}>
+                      ✓ Resolved by {c.resolvedBy?.name || 'Author'}
+                    </span>
+                  ) : (
+                    <span style={{ color: '#d97706', fontSize: '0.8rem', fontWeight: 600 }}>
+                      ● Unresolved (Must be resolved before resubmission)
+                    </span>
+                  )}
+
+                  {!c.resolvedAt && document.authorId === user?.id && (
+                    <button
+                      onClick={() => handleResolveComment(c.id)}
+                      className="btn btn-secondary btn-sm"
+                      style={{ fontSize: '0.75rem', padding: '0.25rem 0.6rem' }}
+                    >
+                      Mark Resolved ✓
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+
+            {document.comments.length === 0 && (
+              <p style={{ color: 'var(--text-muted)', fontStyle: 'italic', textAlign: 'center', padding: '1.5rem 0' }}>
+                No feedback comments posted yet.
+              </p>
+            )}
+          </div>
         </div>
       )}
 
-      {/* Tab: Audit Log Timeline */}
+      {/* Tab: Audit Log */}
       {activeTab === 'audit' && (
         <div className="card">
           <div className="card-header">
             <h2 className="card-title">Immutable Audit Trail</h2>
+            <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+              Cryptographically timestamped action journal
+            </span>
           </div>
 
           <div className="timeline">
             {auditEvents.map((evt) => (
               <div key={evt.id} className="timeline-item">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
                   <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>
-                    {evt.actor?.name}{' '}
-                    <span className="role-badge" style={{ marginLeft: '0.35rem' }}>
-                      {evt.action}
-                    </span>
+                    <span style={{ color: 'var(--text-main)' }}>{evt.actor?.name || 'System'}</span>{' '}
+                    <span className="role-badge">{evt.action}</span>
+                    {evt.version && (
+                      <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginLeft: '0.35rem' }}>
+                        (Version v{evt.version.versionNumber})
+                      </span>
+                    )}
                   </div>
                   <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                     {new Date(evt.createdAt).toLocaleString()}
                   </span>
                 </div>
-
                 {(evt.fromStatus || evt.toStatus) && (
-                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
-                    Status Transition: <code>{evt.fromStatus || 'N/A'}</code> → <code>{evt.toStatus || 'N/A'}</code>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
+                    Status transition: <code>{evt.fromStatus || '—'}</code> → <code>{evt.toStatus || '—'}</code>
                   </div>
-                )}
-
-                {evt.metadata && (
-                  <pre
-                    style={{
-                      fontFamily: 'var(--font-mono)',
-                      fontSize: '0.75rem',
-                      background: '#0f172a',
-                      padding: '0.5rem',
-                      borderRadius: '4px',
-                      marginTop: '0.4rem',
-                      color: 'var(--text-muted)',
-                      overflowX: 'auto',
-                    }}
-                  >
-                    {JSON.stringify(evt.metadata, null, 2)}
-                  </pre>
                 )}
               </div>
             ))}
@@ -508,9 +738,7 @@ export const DocumentDetailPage: React.FC = () => {
           <div className="modal">
             <div className="modal-header">
               <h3 className="modal-title">Create New Document Version</h3>
-              <button onClick={() => setShowVersionModal(false)} className="modal-close">
-                ×
-              </button>
+              <button onClick={() => setShowVersionModal(false)} className="modal-close">×</button>
             </div>
 
             <form onSubmit={handleCreateVersion}>
@@ -521,7 +749,7 @@ export const DocumentDetailPage: React.FC = () => {
                   value={vContent}
                   onChange={(e) => setVContent(e.target.value)}
                   placeholder="Paste or write revised document content..."
-                  rows={8}
+                  rows={9}
                   required
                 />
               </div>
@@ -539,11 +767,7 @@ export const DocumentDetailPage: React.FC = () => {
               </div>
 
               <div className="modal-footer">
-                <button
-                  type="button"
-                  onClick={() => setShowVersionModal(false)}
-                  className="btn btn-secondary"
-                >
+                <button type="button" onClick={() => setShowVersionModal(false)} className="btn btn-secondary">
                   Cancel
                 </button>
                 <button type="submit" className="btn btn-primary" disabled={vSubmitting}>
@@ -560,16 +784,16 @@ export const DocumentDetailPage: React.FC = () => {
         <div className="modal-overlay">
           <div className="modal">
             <div className="modal-header">
-              <h3 className="modal-title">Record Review / Approval Decision</h3>
-              <button onClick={() => setShowDecisionModal(false)} className="modal-close">
-                ×
-              </button>
+              <h3 className="modal-title">
+                {document.status === 'IN_APPROVAL' ? '🛡️ Final Executive Decision' : '⚖ Record Review Decision'}
+              </h3>
+              <button onClick={() => setShowDecisionModal(false)} className="modal-close">×</button>
             </div>
 
             <form onSubmit={handleRecordDecision}>
               <div className="form-group">
                 <label className="form-label">Select Your Decision</label>
-                <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
+                <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
                   <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer' }}>
                     <input
                       type="radio"
@@ -578,7 +802,9 @@ export const DocumentDetailPage: React.FC = () => {
                       checked={decisionType === 'APPROVE'}
                       onChange={() => setDecisionType('APPROVE')}
                     />
-                    <span style={{ color: '#4ade80', fontWeight: 600 }}>Approve</span>
+                    <span style={{ color: '#16a34a', fontWeight: 700 }}>
+                      {document.status === 'IN_APPROVAL' ? 'Grant Final Approval' : 'Approve Review'}
+                    </span>
                   </label>
 
                   <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer' }}>
@@ -589,7 +815,7 @@ export const DocumentDetailPage: React.FC = () => {
                       checked={decisionType === 'REQUEST_CHANGES'}
                       onChange={() => setDecisionType('REQUEST_CHANGES')}
                     />
-                    <span style={{ color: '#f87171', fontWeight: 600 }}>Request Changes</span>
+                    <span style={{ color: '#d97706', fontWeight: 700 }}>Request Changes</span>
                   </label>
 
                   {document.status === 'IN_APPROVAL' && (
@@ -601,7 +827,7 @@ export const DocumentDetailPage: React.FC = () => {
                         checked={decisionType === 'REJECT'}
                         onChange={() => setDecisionType('REJECT')}
                       />
-                      <span style={{ color: '#fb7185', fontWeight: 600 }}>Reject Document</span>
+                      <span style={{ color: '#dc2626', fontWeight: 700 }}>Reject Document</span>
                     </label>
                   )}
                 </div>
@@ -609,32 +835,45 @@ export const DocumentDetailPage: React.FC = () => {
 
               <div className="form-group">
                 <label className="form-label">
-                  Decision Comment {decisionType !== 'APPROVE' && <span style={{ color: '#f87171' }}>* (Required)</span>}
+                  Feedback / Justification Notes{' '}
+                  {decisionType === 'REQUEST_CHANGES' ? (
+                    <strong style={{ color: '#dc2626' }}>(Mandatory for requesting changes)</strong>
+                  ) : (
+                    <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>(Optional)</span>
+                  )}
                 </label>
                 <textarea
                   className="form-textarea"
                   value={decisionComment}
                   onChange={(e) => setDecisionComment(e.target.value)}
                   placeholder={
-                    decisionType === 'APPROVE'
-                      ? 'Optional approval comment...'
-                      : 'Specify required changes or reason for rejection...'
+                    decisionType === 'REQUEST_CHANGES'
+                      ? 'Specify exactly what needs to be changed before you can approve...'
+                      : 'Add any optional sign-off remarks or guidance...'
                   }
                   rows={4}
-                  required={decisionType !== 'APPROVE'}
+                  required={decisionType === 'REQUEST_CHANGES'}
                 />
               </div>
 
               <div className="modal-footer">
-                <button
-                  type="button"
-                  onClick={() => setShowDecisionModal(false)}
-                  className="btn btn-secondary"
-                >
+                <button type="button" onClick={() => setShowDecisionModal(false)} className="btn btn-secondary">
                   Cancel
                 </button>
-                <button type="submit" className="btn btn-primary" disabled={decisionSubmitting}>
-                  {decisionSubmitting ? 'Recording...' : 'Submit Decision'}
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  disabled={decisionSubmitting}
+                  style={{
+                    background:
+                      decisionType === 'APPROVE'
+                        ? 'linear-gradient(135deg, #15803d, #16a34a)'
+                        : decisionType === 'REQUEST_CHANGES'
+                        ? 'linear-gradient(135deg, #d97706, #ea580c)'
+                        : 'linear-gradient(135deg, #dc2626, #b91c1c)',
+                  }}
+                >
+                  {decisionSubmitting ? 'Recording...' : `Confirm ${decisionType}`}
                 </button>
               </div>
             </form>

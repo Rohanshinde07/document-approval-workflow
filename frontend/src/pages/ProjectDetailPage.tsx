@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { ProjectMember, Task, ProjectRole } from '../types.js';
 import { apiRequest } from '../api/client.js';
 import { StatusBadge } from '../components/StatusBadge.js';
+import { DOCUMENT_TEMPLATES, DocumentTemplate } from '../data/templates.js';
 
 interface ProjectDetail {
   id: string;
@@ -401,6 +402,54 @@ export const ProjectDetailPage: React.FC = () => {
                 {actionError}
               </div>
             )}
+
+            {/* Template Selector */}
+            <div style={{ marginBottom: '1.25rem' }}>
+              <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>
+                ⚡ Quick Start with Template
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.5rem' }}>
+                {DOCUMENT_TEMPLATES.map((tmpl) => (
+                  <button
+                    key={tmpl.id}
+                    type="button"
+                    onClick={() => {
+                      setNewDocTitle(tmpl.titleSuggestion);
+                      setNewDocContent(tmpl.content);
+                      setNewDocSummary(`Initial version (${tmpl.name})`);
+                    }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.6rem',
+                      padding: '0.6rem 0.75rem',
+                      border: '1px solid #e2e8f0',
+                      borderRadius: '8px',
+                      background: '#f8fafc',
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                      transition: 'all 0.15s ease',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.borderColor = 'var(--accent-blue)';
+                      e.currentTarget.style.background = 'white';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.borderColor = '#e2e8f0';
+                      e.currentTarget.style.background = '#f8fafc';
+                    }}
+                  >
+                    <span style={{ fontSize: '1.25rem' }}>{tmpl.icon}</span>
+                    <div style={{ overflow: 'hidden' }}>
+                      <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-main)', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
+                        {tmpl.name}
+                      </div>
+                      <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{tmpl.category}</div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
 
             <form onSubmit={handleCreateDocument}>
               <div className="form-group">
