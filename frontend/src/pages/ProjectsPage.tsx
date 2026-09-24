@@ -15,6 +15,8 @@ export const ProjectsPage: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
   const [modalError, setModalError] = useState('');
 
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
   const navigate = useNavigate();
 
   const loadProjects = () => {
@@ -28,6 +30,23 @@ export const ProjectsPage: React.FC = () => {
   useEffect(() => {
     loadProjects();
   }, []);
+
+  const handleDeleteProject = async (projectId: string, projectName: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!window.confirm(`Are you sure you want to permanently delete project "${projectName}" and all its documents, tasks, and audit logs? This cannot be undone.`)) {
+      return;
+    }
+
+    setDeletingId(projectId);
+    try {
+      await apiRequest(`/api/projects/${projectId}`, { method: 'DELETE' });
+      setProjects((prev) => prev.filter((p) => p.id !== projectId));
+    } catch (err: any) {
+      alert(`Failed to delete project: ${err.message}`);
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   const handleCreateProject = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -109,9 +128,33 @@ export const ProjectsPage: React.FC = () => {
                   <div>📄 <strong>{p.documentCount}</strong> Documents</div>
                 </div>
 
-                <Link to={`/projects/${p.id}`} className="btn btn-secondary" style={{ width: '100%' }}>
-                  View Project Details →
-                </Link>
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                  <Link to={`/projects/${p.id}`} className="btn btn-secondary" style={{ flex: 1, textAlign: 'center' }}>
+                    View Project Details →
+                  </Link>
+                  {p.role === 'OWNER' && (
+                    <button
+                      type="button"
+                      onClick={(e) => handleDeleteProject(p.id, p.name, e)}
+                      disabled={deletingId === p.id}
+                      className="btn btn-secondary btn-sm"
+                      style={{
+                        padding: '0.45rem 0.75rem',
+                        color: '#dc2626',
+                        borderColor: '#fca5a5',
+                        background: '#fff',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontWeight: 600,
+                      }}
+                      title="Permanently delete project"
+                    >
+                      {deletingId === p.id ? '...' : '🗑️'}
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           ))}

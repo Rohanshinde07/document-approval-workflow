@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { ProjectMember, Task, ProjectRole } from '../types.js';
 import { apiRequest } from '../api/client.js';
 import { StatusBadge } from '../components/StatusBadge.js';
@@ -19,10 +19,12 @@ interface ProjectDetail {
 
 export const ProjectDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [project, setProject] = useState<ProjectDetail | null>(null);
   const [documents, setDocuments] = useState<any[]>([]);
   const [statusFilter, setStatusFilter] = useState<string>('');
+  const [deletingProject, setDeletingProject] = useState(false);
   const [taskFilter, setTaskFilter] = useState<string>('');
   const [activeTab, setActiveTab] = useState<'documents' | 'members'>('documents');
   const [loading, setLoading] = useState(true);
@@ -290,6 +292,22 @@ export const ProjectDetailPage: React.FC = () => {
     }
   };
 
+  const handleDeleteProject = async () => {
+    if (!project) return;
+    if (!confirm(`Are you sure you want to permanently delete project "${project.name}" and all associated documents, tasks, and audit records?\nThis action cannot be undone.`)) {
+      return;
+    }
+
+    setDeletingProject(true);
+    try {
+      await apiRequest(`/api/projects/${project.id}`, { method: 'DELETE' });
+      navigate('/projects');
+    } catch (err: any) {
+      alert(`Failed to delete project: ${err.message}`);
+      setDeletingProject(false);
+    }
+  };
+
   const filteredDocuments = documents.filter((doc) => {
     if (statusFilter && doc.status !== statusFilter) return false;
     if (taskFilter && doc.taskId !== taskFilter) return false;
@@ -309,11 +327,35 @@ export const ProjectDetailPage: React.FC = () => {
             <p style={{ color: 'var(--text-muted)' }}>{project.description || 'No description'}</p>
           </div>
 
-          {canCreateDoc && (
-            <button onClick={() => setShowDocModal(true)} className="btn btn-primary">
-              + New Document
-            </button>
-          )}
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+            {project.myRole === 'OWNER' && (
+              <button
+                type="button"
+                onClick={handleDeleteProject}
+                disabled={deletingProject}
+                className="btn btn-secondary btn-sm"
+                style={{
+                  color: '#dc2626',
+                  borderColor: '#fca5a5',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                  fontWeight: 600,
+                  padding: '0.45rem 0.85rem',
+                }}
+                title="Permanently delete this project"
+              >
+                <span>🗑️</span>
+                <span>{deletingProject ? 'Deleting...' : 'Delete Project'}</span>
+              </button>
+            )}
+
+            {canCreateDoc && (
+              <button onClick={() => setShowDocModal(true)} className="btn btn-primary">
+                + New Document
+              </button>
+            )}
+          </div>
         </div>
       </div>
 

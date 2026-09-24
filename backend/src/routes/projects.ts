@@ -7,6 +7,7 @@ import {
   addProjectMember,
   updateProjectMemberRole,
   removeProjectMember,
+  deleteProject,
 } from '../services/projects.js';
 import { listDocuments, createDocument } from '../services/documents.js';
 
@@ -152,6 +153,17 @@ router.post('/:id/documents', async (req: Request, res: Response, next: NextFunc
     const data = createDocumentSchema.parse(req.body);
     const doc = await createDocument(projectId, req.user!.id, data);
     res.status(201).json(doc);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.delete('/:id', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const projectId = getParam(req.params.id);
+    const isAdmin = req.user!.email === 'admin@demo.com' || req.user!.email.startsWith('admin@');
+    const result = await deleteProject(projectId, req.user!.id, isAdmin);
+    res.json(result);
   } catch (err) {
     next(err);
   }

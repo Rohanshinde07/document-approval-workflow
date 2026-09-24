@@ -239,3 +239,76 @@ export async function removeProjectMember(
     return { success: true };
   });
 }
+
+export async function deleteProject(projectId: string, requestingUserId: string, isAdmin = false) {
+  if (!isAdmin) {
+    const requestingMember = await getProjectMembership(projectId, requestingUserId);
+    if (requestingMember.role !== 'OWNER') {
+      throw new ForbiddenError('Only project owners or system admins can delete this project');
+    }
+  }
+
+  return prisma.$transaction(async (tx) => {
+    // 1. Get all documents in this project
+    const projectDocs = await tx.document.findMany({
+      where: { projectId },
+      select: { id: true },
+    });
+    const docIds = projectDocs.map((d) => d.id);
+
+    if (docIds.length > 0) {
+      // Break currentVersionId foreign key cycle on all documents
+      await tx.document.updateMany({
+        where: { id: { in: docIds } },
+        data: { currentVersionId: null },
+      });
+
+      // Delete review assignments
+      await tx.reviewAssignment.deleteMany({
+        where: { documentId: { in: docIds } },
+      });
+
+      // Delete comments
+      await tx.comment.deleteMany({
+        where: { documentId: { in: docIds } },
+      });
+
+      // Delete document versions
+      await tx.documentVersion.deleteMany({
+        where: { documentId: { in: docIds } },
+      });
+
+      // Delete documents
+      await tx.document.deleteMany({
+        where: { id: { in: docIds } },
+      });
+    }
+
+    // 2. Delete tasks
+    await tx.task.deleteMany({
+      where: { projectId },
+    });
+
+    // 3. Delete project invites
+    await tx.projectInvite.deleteMany({
+      where: { projectId },
+    });
+
+    // 4. Delete audit events
+    await tx.auditEvent.deleteMany({
+      where: { projectId },
+    });
+
+    // 5. Delete project members
+    await tx.projectMember.deleteMany({
+      where: { projectId },
+    });
+
+    // 6. Delete project
+    await tx.project.delete({
+      where: { id: projectId },
+    });
+
+    return { success: true };
+  });
+}
