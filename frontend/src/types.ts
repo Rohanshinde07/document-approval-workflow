@@ -143,4 +143,5 @@ export interface UserQueue {
     document: DocumentDetail;
   }[];
   needingChanges: DocumentDetail[];
+  myDocuments?: DocumentDetail[];
 }

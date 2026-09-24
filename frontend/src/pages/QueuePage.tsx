@@ -11,10 +11,11 @@ export const QueuePage: React.FC = () => {
   const [projectsCount, setProjectsCount] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [activeFilter, setActiveFilter] = useState<'all' | 'reviews' | 'approvals' | 'changes'>('all');
+  const [activeFilter, setActiveFilter] = useState<'all' | 'reviews' | 'approvals' | 'changes' | 'mydocs'>('all');
 
   const reviewsRef = useRef<HTMLDivElement>(null);
   const changesRef = useRef<HTMLDivElement>(null);
+  const myDocsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     Promise.all([
@@ -35,8 +36,9 @@ export const QueuePage: React.FC = () => {
   const awaitingReviews = queue?.awaitingDecision.filter((item) => item.stage === 'REVIEW') || [];
   const awaitingApprovals = queue?.awaitingDecision.filter((item) => item.stage === 'APPROVAL') || [];
   const needingChanges = queue?.needingChanges || [];
+  const myDocuments = queue?.myDocuments || [];
 
-  const handleMetricCardClick = (filter: 'reviews' | 'approvals' | 'changes' | 'all') => {
+  const handleMetricCardClick = (filter: 'reviews' | 'approvals' | 'changes' | 'mydocs' | 'all') => {
     setActiveFilter(filter);
     // Scroll to the relevant section
     setTimeout(() => {
@@ -44,6 +46,8 @@ export const QueuePage: React.FC = () => {
         reviewsRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
       } else if (filter === 'changes' && changesRef.current) {
         changesRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } else if (filter === 'mydocs' && myDocsRef.current) {
+        myDocsRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
     }, 100);
   };
@@ -127,6 +131,25 @@ export const QueuePage: React.FC = () => {
         </div>
 
         <div
+          id="metric-mydocs"
+          className={`metric-card metric-card-clickable ${activeFilter === 'mydocs' ? 'metric-card-active' : ''}`}
+          onClick={() => handleMetricCardClick('mydocs')}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => e.key === 'Enter' && handleMetricCardClick('mydocs')}
+          title="Click to view documents you authored"
+        >
+          <div>
+            <div className="metric-title">My Documents</div>
+            <div className="metric-value">{myDocuments.length}</div>
+            <div className="metric-action-hint">In pipeline →</div>
+          </div>
+          <div className="metric-icon" style={{ background: 'rgba(37, 99, 235, 0.15)', color: '#2563eb' }}>
+            📄
+          </div>
+        </div>
+
+        <div
           id="metric-projects"
           className={`metric-card metric-card-clickable ${activeFilter === 'all' ? 'metric-card-active' : ''}`}
           onClick={() => handleMetricCardClick('all')}
@@ -165,6 +188,7 @@ export const QueuePage: React.FC = () => {
             {activeFilter === 'reviews' && 'Pending Reviews only'}
             {activeFilter === 'approvals' && 'Pending Approvals only'}
             {activeFilter === 'changes' && 'Documents Needing Revisions only'}
+            {activeFilter === 'mydocs' && 'My Authored Documents only'}
           </span>
           <button
             onClick={() => setActiveFilter('all')}
@@ -183,7 +207,7 @@ export const QueuePage: React.FC = () => {
       )}
 
       {/* Awaiting My Decision */}
-      {activeFilter !== 'changes' && (
+      {activeFilter !== 'changes' && activeFilter !== 'mydocs' && (
         <div className="card" ref={reviewsRef}>
           <div className="card-header">
             <h2 className="card-title">
@@ -241,6 +265,92 @@ export const QueuePage: React.FC = () => {
                       </td>
                     </tr>
                   ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* My Authored Documents */}
+      {activeFilter !== 'reviews' && activeFilter !== 'approvals' && activeFilter !== 'changes' && (
+        <div className="card" ref={myDocsRef} style={{ marginTop: '1.5rem' }}>
+          <div className="card-header">
+            <div>
+              <h2 className="card-title">My Authored Documents</h2>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '0.2rem' }}>
+                All documents you authored and their live status in the sequential pipeline.
+              </p>
+            </div>
+            <span className="badge badge-in_review">
+              {myDocuments.length} Documents
+            </span>
+          </div>
+
+          {myDocuments.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '2rem 1rem', color: 'var(--text-muted)' }}>
+              <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>📝</div>
+              <div style={{ fontWeight: 600 }}>No Documents Authored Yet</div>
+              <div style={{ fontSize: '0.85rem', color: 'var(--text-dim)', marginTop: '0.2rem' }}>
+                You haven't authored any documents yet. Open a project to create your first document.
+              </div>
+            </div>
+          ) : (
+            <div className="table-container">
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>Document Title</th>
+                    <th>Project</th>
+                    <th>Version</th>
+                    <th>Pipeline Status</th>
+                    <th>Current Workflow Stage</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {myDocuments.map((doc) => {
+                    let stageInfo = 'Stage 1: Author Drafting';
+                    let stageColor = '#64748b';
+                    if (doc.status === 'IN_REVIEW') {
+                      stageInfo = 'Stage 2: Technical Review (Awaiting Reviewers)';
+                      stageColor = '#d97706';
+                    } else if (doc.status === 'IN_APPROVAL') {
+                      stageInfo = 'Stage 3: Final Sign-off (Awaiting Approvers)';
+                      stageColor = '#2563eb';
+                    } else if (doc.status === 'CHANGES_REQUESTED') {
+                      stageInfo = '⚠️ Revisions Requested (Action Required by You)';
+                      stageColor = '#dc2626';
+                    } else if (doc.status === 'APPROVED') {
+                      stageInfo = '✓ Stage 4: Sealed & Approved';
+                      stageColor = '#16a34a';
+                    }
+
+                    return (
+                      <tr key={doc.id}>
+                        <td>
+                          <Link to={`/documents/${doc.id}`} style={{ fontWeight: 700, color: 'var(--accent-blue)' }}>
+                            {doc.title}
+                          </Link>
+                        </td>
+                        <td>{doc.project?.name}</td>
+                        <td>
+                          <strong>v{doc.currentVersion?.versionNumber || 1}</strong>
+                        </td>
+                        <td>
+                          <StatusBadge status={doc.status} />
+                        </td>
+                        <td style={{ fontSize: '0.85rem', color: stageColor, fontWeight: 600 }}>
+                          {stageInfo}
+                        </td>
+                        <td>
+                          <Link to={`/documents/${doc.id}`} className="btn btn-secondary btn-sm">
+                            Open Document →
+                          </Link>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

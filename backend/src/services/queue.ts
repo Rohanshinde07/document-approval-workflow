@@ -58,8 +58,29 @@ export async function getUserQueue(userId: string) {
     orderBy: { updatedAt: 'desc' },
   });
 
+  // Find all documents authored by user
+  const myDocuments = await prisma.document.findMany({
+    where: {
+      authorId: userId,
+    },
+    include: {
+      project: { select: { id: true, name: true } },
+      task: { select: { id: true, title: true } },
+      author: { select: { id: true, email: true, name: true } },
+      currentVersion: {
+        select: { id: true, versionNumber: true, changeSummary: true },
+      },
+      reviewAssignments: {
+        where: { status: 'PENDING' },
+        include: { user: { select: { name: true, email: true } } },
+      },
+    },
+    orderBy: { updatedAt: 'desc' },
+  });
+
   return {
     awaitingDecision,
     needingChanges,
+    myDocuments,
   };
 }
